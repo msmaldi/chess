@@ -98,7 +98,6 @@ gboolean 	checkmate				(Board *board, Player p);
 gboolean 	can_castle_kingside		(Board *board, Player p);
 gboolean 	can_castle_queenside	(Board *board, Player p);
 
-
 extern char *start_board_fen;
 
 #endif // include guard

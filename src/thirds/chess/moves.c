@@ -387,7 +387,9 @@ Square END_SQUARE (Move m)
 Move NULL_MOVE ()
 {
     Move m;
-    return m;
+	m.end = NULL_SQUARE;
+	m.start = NULL_SQUARE;
+	return m;
 }
 
 gboolean    eq_move (Move x, Move y)

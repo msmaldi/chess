@@ -2,6 +2,7 @@
 #define APPLICATION_H
 
 #include <gtk/gtk.h>
+#include "chessboard.h"
 #include "fen_box.h"
 
 extern  GtkWidget   *window;

@@ -17,6 +17,21 @@ Game *new_game()
 	return game;
 }
 
+Game*
+game_new_startpos ()
+{
+	Game *game = g_new (Game, 1);
+	game->board = g_new (Board, 1);
+	gboolean success = from_fen(game->board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	g_assert (success);
+
+	game->parent   = NULL;
+	game->children = NULL;
+	game->sibling  = NULL;
+
+	return game;
+}
+
 Game *add_child(Game *game, Move move)
 {
 	Board *board = malloc(sizeof *board);

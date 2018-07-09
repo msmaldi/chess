@@ -4,25 +4,22 @@
 
 #include "application/application.h"
 
-char *piece_svgs = "pieces/merida/";
+char *piece_svgs_path = "pieces/merida/";
 
 int main(int argc, char *argv[])
 {
     gtk_init (&argc, &argv);
 
     GError *err = NULL;
-	load_svgs(piece_svgs, &err);
+	load_svgs(piece_svgs_path, &err);
+    chessboard_load_svgs (piece_svgs_path, &err);
 	if (err != NULL) {
 		printf("Error loading SVGs:\n%s\n", err->message);
 		return 1;
 	}
 
-    current_game = new_game();
-    current_game->board = malloc(sizeof(Board));
 
-    bool success = from_fen(current_game->board, start_board_fen);
-    // This is a fixed string, it should never fail to be parsed
-    assert(success);
+    current_game = game_new_startpos ();
 
     initialize_widgets ();
     pack_widgets_and_show ();

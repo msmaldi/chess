@@ -20,6 +20,8 @@ typedef struct Game
 	struct Game *sibling;
 } Game;
 
+Game	*game_new_startpos	(void);
+
 Game *new_game();
 Game *add_child(Game *game, Move move);
 Game *first_child(Game *game);
