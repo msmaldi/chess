@@ -4,13 +4,18 @@
 #include <gtk/gtk.h>
 #include "../thirds/chess/game.h"
 #include "../thirds/chess/board.h"
-#include "../thirds/board_display.h"
+
+#define DEFAULT_SQUARE_SIZE 50
 
 typedef struct _ChessBoard
 {
     Game *game;
     GtkWidget *board;
     GtkWidget *board_area;
+    GtkWidget *start_label[BOARD_SIZE];
+    GtkWidget *end_label[BOARD_SIZE];
+    GtkWidget *right_label[BOARD_SIZE];
+    GtkWidget *left_label[BOARD_SIZE];
     gboolean flipped;
 
     Square drag_source;
@@ -19,10 +24,20 @@ typedef struct _ChessBoard
 } ChessBoard;
 
 
-ChessBoard      *chessboard_new         (void);
-void             chessboard_new_game    (ChessBoard *chessboard);
-void             chessboard_flip        (ChessBoard *chessboard);
-void             free_chessboard        (ChessBoard *chessboard);
+ChessBoard    *chessboard_new            (void);
+void           chessboard_new_game       (ChessBoard *chessboard);
+void           chessboard_set_startpos   (ChessBoard *chessboard);
+//void           chessboard_set_fen        (ChessBoard *chessboard, 
+//                                          gchar      *fen,
+//                                          GError     **error);
+//void            chessboard_set_pgn       (ChessBoard *chessboard,
+//                                          PGN        pgn,
+//                                          GError     **error);
+void           chessboard_set_game      (ChessBoard *chessboard, Game *game);
+
+
+void           chessboard_flip           (ChessBoard *chessboard);
+void           free_chessboard           (ChessBoard *chessboard);
 
 
 
@@ -39,5 +54,7 @@ gboolean
 chessboard_mouse_move_callback (GtkWidget *widget, 
 								GdkEvent  *event,
 								gpointer   data);
+
+void chessboard_update_board_labels (ChessBoard *chessboard);
 
 #endif

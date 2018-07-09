@@ -1,6 +1,7 @@
 #ifndef GAME_H_
 #define GAME_H_
 
+#include <glib.h>
 #include "board.h"
 #include "moves.h"
 
@@ -8,26 +9,25 @@
 // children. This is to make variations easy to store. Linked lists are used
 // to store the children for ease of inserting new elements.
 
-struct Game;
-
-typedef struct Game
+typedef struct _Game
 {
 	Move move;
 	Board *board;
 
-	struct Game *parent;
-	struct Game *children;
-	struct Game *sibling;
+	struct _Game *parent;
+	struct _Game *children;
+	struct _Game *sibling;
 } Game;
 
-Game	*game_new_startpos	(void);
+Game		*game_new			(void);
+Game		*game_new_prepared	(Move move, Board *board, Game *parent);
+Game		*game_new_startpos	(void);
 
-Game *new_game();
-Game *add_child(Game *game, Move move);
-Game *first_child(Game *game);
-Game *root_node(Game *game);
-Game *last_node(Game *game);
-bool has_children(Game *game);
-void free_game(Game *game);
+Game 		*add_child			(Game *game, Move move);
+Game 		*first_child		(Game *game);
+Game 		*root_node			(Game *game);
+Game 		*last_node			(Game *game);
+gboolean 	 has_children		(Game *game);
+void 	 	 free_game			(Game *game);
 
 #endif // include guard

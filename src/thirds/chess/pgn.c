@@ -699,8 +699,7 @@ static bool parse_tokens(PGN *pgn, GArray *tokens, GError **err)
 	// Now the movetext section
 	uint half_move_number = 2;
 
-	Game *game = new_game();
-	game->board = malloc(sizeof(Board));
+	Game *game = game_new ();
 	pgn->game = game;
 	// TODO: Use value in start board tag if present.
 	from_fen(game->board, start_board_fen);

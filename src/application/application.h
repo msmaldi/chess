@@ -5,6 +5,7 @@
 #include "chessboard.h"
 #include "fen_box.h"
 
+extern  ChessBoard  *chessboard;
 extern  GtkWidget   *window;
 extern  GtkWidget   *notebook;
 extern  GtkWidget   *box;

@@ -31,6 +31,29 @@ chessboard_new (void)
 
     gtk_container_add (GTK_CONTAINER (frame_inside), GTK_WIDGET (result->board_area));
 
+	
+	for(size_t i = 0; i < BOARD_SIZE; i++)
+	{
+		result->start_label[i] = gtk_label_new ("s");
+		result->end_label[i] = gtk_label_new ("e");
+		result->left_label[i] = gtk_label_new ("l");
+		result->right_label[i] = gtk_label_new ("r");
+
+    	gtk_grid_attach (GTK_GRID (grid), 
+			GTK_WIDGET (result->start_label[i]), (2*i)+1, 0, 2, 1);
+
+    	gtk_grid_attach (GTK_GRID (grid), 
+			GTK_WIDGET (result->end_label[i]), (2*i)+1, 17, 2, 1);
+
+    	gtk_grid_attach (GTK_GRID (grid), 
+			GTK_WIDGET (result->left_label[i]), 0, (2*i)+1, 1, 2);		
+
+    	gtk_grid_attach (GTK_GRID (grid), 
+			GTK_WIDGET (result->right_label[i]), 17, (2*i)+1, 1, 2);
+	}
+
+	chessboard_update_board_labels (result);
+
     gtk_widget_add_events(result->board_area,
 			GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK |
 			GDK_POINTER_MOTION_MASK);
@@ -56,9 +79,19 @@ chessboard_set_startpos (ChessBoard *chessboard)
 }
 
 void
+chessboard_set_game (ChessBoard *chessboard, Game *game)
+{
+	free_game (chessboard->game);
+	chessboard->game = game;
+	gtk_widget_queue_draw (chessboard->board_area);
+}
+
+
+void
 chessboard_flip (ChessBoard *chessboard)
 {
 	chessboard->flipped = !chessboard->flipped;
+	chessboard_update_board_labels (chessboard);
 	gtk_widget_queue_draw (chessboard->board_area);
 }
 
@@ -161,7 +194,7 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 			}
 
 			// Highlight the source and target squares of the last move
-			Move last_move = current_game->move;
+			Move last_move = chessboard->game->move;
 			Square s = SQUARE(x, y);
 			if ( !eq_move (last_move, NULL_MOVE ()) && //last_move != NULL_MOVE () &&
 					(s == START_SQUARE(last_move) || s == END_SQUARE(last_move))) {
@@ -178,7 +211,7 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 
 			// Draw the piece, if there is one
 			Piece p;
-			if ((p = PIECE_AT(current_game->board, x, y)) != EMPTY &&
+			if ((p = PIECE_AT(chessboard->game->board, x, y)) != EMPTY &&
 					(chessboard->drag_source == NULL_SQUARE || SQUARE(x, y) != chessboard->drag_source)) {
 				draw_piece_n(cr, p, square_size);
 			}
@@ -283,24 +316,51 @@ chessboard_mouse_up_callback (GtkWidget *widget,
 	//
 	
 	Move m = MOVE(chessboard->drag_source, drag_target);
-	if (legal_move(current_game->board, m, true)) {
+	if (legal_move(chessboard->game->board, m, true)) {
 		char notation[MAX_ALGEBRAIC_NOTATION_LENGTH];
-		algebraic_notation_for(current_game->board, m, notation);
+		algebraic_notation_for(chessboard->game->board, m, notation);
 
 		// TODO: Stop printing this when we have a proper move list GUI
-		if (current_game->board->turn == WHITE)
-			printf("%d. %s", current_game->board->move_number, notation);
+		if (chessboard->game->board->turn == WHITE)
+			printf("%d. %s", chessboard->game->board->move_number, notation);
 		else
 			printf(" %s\n", notation);
 
-		current_game = add_child(current_game, m);
+		chessboard->game = add_child(chessboard->game, m);
 
-		//set_button_sensitivity();
-    	//update_fen_input ();
+		set_button_sensitivity ();
+    	update_fen_input ();
 	}
 
 	chessboard->drag_source = NULL_SQUARE;
 	gtk_widget_queue_draw(widget);
 
 	return FALSE;
+}
+
+gchar *files[BOARD_SIZE] = { "a", "b", "c", "d", "e", "f", "g", "h" };
+gchar *ranks[BOARD_SIZE] = { "1", "2", "3", "4", "5", "6", "7", "8" };
+
+void chessboard_update_board_labels (ChessBoard *chessboard)
+{
+	if (!chessboard->flipped)
+	{
+		for(size_t i = 0, e = BOARD_SIZE - 1; i < BOARD_SIZE; i++, e--)
+		{
+			gtk_label_set_label (GTK_LABEL (chessboard->start_label[i]), files[i]);
+			gtk_label_set_label (GTK_LABEL (chessboard->end_label[i]), files[i]);
+			gtk_label_set_label (GTK_LABEL (chessboard->left_label[i]), ranks[e]);
+			gtk_label_set_label (GTK_LABEL (chessboard->right_label[i]), ranks[e]);
+		}
+	}
+	else
+	{
+		for(size_t i = 0, e = BOARD_SIZE - 1; i < BOARD_SIZE; i++, e--)
+		{
+			gtk_label_set_label (GTK_LABEL (chessboard->start_label[i]), files[e]);
+			gtk_label_set_label (GTK_LABEL (chessboard->end_label[i]), files[e]);
+			gtk_label_set_label (GTK_LABEL (chessboard->left_label[i]), ranks[i]);
+			gtk_label_set_label (GTK_LABEL (chessboard->right_label[i]), ranks[i]);
+		}
+	}
 }

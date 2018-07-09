@@ -11,15 +11,11 @@ int main(int argc, char *argv[])
     gtk_init (&argc, &argv);
 
     GError *err = NULL;
-	load_svgs(piece_svgs_path, &err);
     chessboard_load_svgs (piece_svgs_path, &err);
 	if (err != NULL) {
 		printf("Error loading SVGs:\n%s\n", err->message);
 		return 1;
 	}
-
-
-    current_game = game_new_startpos ();
 
     initialize_widgets ();
     pack_widgets_and_show ();

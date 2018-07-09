@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <glib.h>
-#include "../misc.h"
+#include "misc.h"
 
 #define BOARD_SIZE 8
 #define PLAYERS 2

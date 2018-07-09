@@ -1,8 +1,15 @@
 #include <gtk/gtk.h>
 #include "../engine/uci_engine.h"
 #include "notebook.h"
-#include "../thirds/board_display.h"
 #include "../application/application.h"
+#include "../thirds/chess/pgn.h"
+
+void set_button_sensitivity ();
+void open_pgn_callback (GtkWidget *widget, gpointer data);
+void new_game_callback (GtkWidget *widget, gpointer data);
+gboolean go_next_button_click_callback (GtkWidget *widget, gpointer data);
+gboolean go_back_button_click_callback (GtkWidget *widget, gpointer data);
+gboolean flip_button_click_callback (GtkWidget *widget, gpointer data);
 
 GtkWidget*
 page_home_box ()
@@ -82,23 +89,116 @@ page_home_box ()
     
 
     g_signal_connect(G_OBJECT(home_button_newgame), "clicked",
-		    G_CALLBACK(new_game_callback), NULL);
+		    G_CALLBACK(new_game_callback), chessboard);
 
     g_signal_connect(G_OBJECT(home_button_open_pgn), "clicked",
 		    G_CALLBACK(open_pgn_callback), window);
 
     g_signal_connect(G_OBJECT(home_button_redo), "clicked",
-		    G_CALLBACK(go_next_button_click_callback), NULL);
+	    G_CALLBACK(go_next_button_click_callback), chessboard);
     
     g_signal_connect(G_OBJECT(home_button_undo), "clicked",
-		    G_CALLBACK(go_back_button_click_callback), NULL);
+	    G_CALLBACK(go_back_button_click_callback), chessboard);
 
-    g_signal_connect(G_OBJECT(home_button_enginemove), "clicked",
-		    G_CALLBACK(cb_execute), NULL);
+    //g_signal_connect(G_OBJECT(home_button_enginemove), "clicked",
+	//	    G_CALLBACK(cb_execute), chessboard);
 
     g_signal_connect(G_OBJECT(home_button_flipboard), "clicked",
 		    G_CALLBACK(flip_button_click_callback), NULL);
 
 
     return home_box;
+}
+
+void set_button_sensitivity ()
+{
+	gtk_widget_set_sensitive (home_button_undo, chessboard->game->parent != NULL);
+	gtk_widget_set_sensitive (home_button_redo, has_children(chessboard->game));
+}
+
+void open_pgn_callback(GtkWidget *widget, gpointer data)
+{
+	GtkWindow *parent = (GtkWindow*)data;
+
+	GtkWidget *dialog = gtk_file_chooser_dialog_new("Open PGN", GTK_WINDOW (parent),
+			GTK_FILE_CHOOSER_ACTION_OPEN,
+			"Cancel", GTK_RESPONSE_CANCEL,
+			"Open", GTK_RESPONSE_ACCEPT,
+			NULL);
+
+	GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+
+	gtk_file_chooser_set_local_only(chooser, TRUE);
+
+	GtkFileFilter *just_pgns = gtk_file_filter_new();
+	gtk_file_filter_set_name(just_pgns, "PGN files");
+	gtk_file_filter_add_pattern(just_pgns, "*.pgn");
+	gtk_file_chooser_add_filter(chooser, just_pgns);
+
+	int result = gtk_dialog_run(GTK_DIALOG(dialog));
+	if (result == GTK_RESPONSE_ACCEPT) {
+		char *filename = gtk_file_chooser_get_filename(chooser);
+		PGN pgn;
+		GError *error = NULL;
+		bool success = read_pgn(&pgn, filename, &error);
+
+		g_free(filename);
+
+		if (!success) {
+			// TODO: Display an error dialog
+			puts("Failed to read the PGN");
+			return;
+		}
+
+		chessboard_set_game (chessboard, pgn.game);
+
+		set_button_sensitivity();
+	}
+
+	gtk_widget_destroy(dialog);
+
+    update_fen_input ();
+}
+
+void new_game_callback (GtkWidget *widget, gpointer data)
+{
+    free_game (chessboard->game);
+	chessboard->game = game_new_startpos ();
+
+	gtk_widget_queue_draw(chessboard->board_area);
+
+	set_button_sensitivity();
+    update_fen_input ();
+}
+
+gboolean
+go_next_button_click_callback (GtkWidget *widget, gpointer data)
+{
+	chessboard->game = first_child (chessboard->game);
+	gtk_widget_queue_draw (chessboard->board_area);
+
+	set_button_sensitivity();
+    update_fen_input ();
+
+	return FALSE;
+}
+
+gboolean
+go_back_button_click_callback (GtkWidget *widget, gpointer data)
+{
+	chessboard->game = chessboard->game->parent;
+	gtk_widget_queue_draw (chessboard->board_area);
+
+	set_button_sensitivity();
+    update_fen_input ();
+
+	return FALSE;
+}
+
+gboolean
+flip_button_click_callback (GtkWidget *widget, gpointer data)
+{
+	chessboard_flip (chessboard);
+
+	return FALSE;
 }

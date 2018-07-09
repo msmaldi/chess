@@ -1,4 +1,5 @@
 #include "fen_box.h"
+#include "application.h"
 
 GtkWidget   *fen_box;
 GtkWidget   *fen_input;
@@ -34,6 +35,6 @@ initialize_fen_box_widget ()
 void
 update_fen_input ()
 {
-    to_fen (current_game->board, fen);
+    to_fen (chessboard->game->board, fen);
     gtk_entry_set_text (GTK_ENTRY (fen_input), fen);
 }
