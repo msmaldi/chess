@@ -1,6 +1,6 @@
 CC=cc
 LIBS=`pkg-config --libs gtk+-3.0 librsvg-2.0`
-CFLAGS=-O2 -s
+CFLAGS=-s
 
 CFLAGS_GLIB=`pkg-config --cflags glib-2.0`
 CGLAGS_GTK=`pkg-config --cflags gtk+-3.0`
@@ -34,7 +34,6 @@ application.o: src/application/application.c
 chessboard.o: src/application/chessboard.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CGLAGS_GTK) $(CFLAGS_LIBRSVG)
 
-
 fen_box.o: src/application/fen_box.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CGLAGS_GTK)
 
@@ -49,7 +48,16 @@ moves.o: src/thirds/chess/moves.c
 
 pgn.o: src/thirds/chess/pgn.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
- 
+
+
+test: board_test
+	./board_test
+
+board_test: board_test.o board.o moves.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+
+board_test.o: test/board_test.c
+	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
 clean:
-	rm -f chess *.o
+	rm -f chess board_test *.o

@@ -10,8 +10,8 @@
 void
 perform_move (Board *board, Move move)
 {
-	Square start = START_SQUARE(move);
-	Square end = END_SQUARE(move);
+	Square start = move.start;
+	Square end = move.end;
 	Piece p = PIECE_AT_SQUARE(board, start);
 	Piece_type type = PIECE_TYPE(p);
 
@@ -89,8 +89,8 @@ perform_move (Board *board, Move move)
 gboolean
 legal_move (Board *board, Move move, gboolean check_for_check)
 {
-	Square start = START_SQUARE(move);
-	Square end = END_SQUARE(move);
+	Square start = move.start;
+	Square end = move.end;
 	int dx = SQUARE_X(end) - SQUARE_X(start);
 	int dy = SQUARE_Y(end) - SQUARE_Y(start);
 	Piece p = PIECE_AT_SQUARE(board, start);
@@ -257,14 +257,14 @@ gives_mate(Board *board, Move move, Player player)
 static Square 
 ambiguous_piece(Board *board, Move move)
 {
-	Piece_type type = PIECE_TYPE(PIECE_AT_SQUARE(board, START_SQUARE(move)));
+	Piece_type type = PIECE_TYPE(PIECE_AT_SQUARE(board, (move.start)));
 	for (uint x = 0; x < BOARD_SIZE; x++) {
 		for (uint y = 0; y < BOARD_SIZE; y++) {
 			Square curr_square = SQUARE(x, y);
-			if (curr_square == START_SQUARE(move))
+			if (curr_square == (move.start))
 				continue;
 			if (PIECE_TYPE(PIECE_AT_SQUARE(board, curr_square)) == type &&
-					legal_move(board, MOVE(curr_square, END_SQUARE(move)), true))
+					legal_move(board, MOVE(curr_square, (move.end)), true))
 				return curr_square;
 		}
 	}
@@ -278,8 +278,8 @@ void
 algebraic_notation_for(Board *board, Move move, char *str)
 {
 	uint i = 0;
-	Square start = START_SQUARE(move);
-	Square end = END_SQUARE(move);
+	Square start = move.start;
+	Square end = move.end;
 	Piece p = PIECE_AT_SQUARE(board, start);
 	Piece_type type = PIECE_TYPE(p);
 
@@ -307,7 +307,7 @@ algebraic_notation_for(Board *board, Move move, char *str)
 		return;
 	}
 
-	bool capture = PIECE_AT_SQUARE(board, END_SQUARE(move)) != EMPTY;
+	bool capture = PIECE_AT_SQUARE(board, (move.end)) != EMPTY;
 
 	// Add the letter denoting the type of piece moving
 	if (type != PAWN)
@@ -371,17 +371,6 @@ Move MOVE_WITH_PROMOTION (Square start, Square end, Piece_type promotion)
     move.end = end;
     move.promotion = promotion;
     return move;
-}
-
-
-Square START_SQUARE (Move m)
-{
-    return m.start;
-}
-
-Square END_SQUARE (Move m)
-{
-    return m.end;
 }
 
 Move NULL_MOVE ()

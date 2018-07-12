@@ -5,5 +5,6 @@
 #include "notebook.h"
 
 GtkWidget*   page_home_box ();
+void         set_button_sensitivity ();
 
 #endif

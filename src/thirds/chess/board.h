@@ -9,6 +9,25 @@
 #define BOARD_SIZE 8
 #define PLAYERS 2
 
+#define RANK_8 7
+#define RANK_7 6
+#define RANK_6 5
+#define RANK_5 4
+#define RANK_4 3
+#define RANK_3 2
+#define RANK_2 1
+#define RANK_1 0
+
+#define FILE_A 0
+#define FILE_B 1
+#define FILE_C 2
+#define FILE_D 3
+#define FILE_E 4
+#define FILE_F 5
+#define FILE_G 6
+#define FILE_H 7
+
+
 typedef uint_fast16_t Square;
 #define SQUARE(x, y) (((x) << 8) | (y))
 #define SQUARE_X(s) ((s) >> 8)
@@ -46,6 +65,20 @@ typedef enum Piece_type
 #define PIECE_TYPE(x) ((Piece_type)((x) & ~(1 << (sizeof(Piece) * 8 - 1))))
 #define PIECE(p, t) ((Piece)(((p) << (sizeof(Piece) * 8 - 1)) | (t)))
 #define NULL_PIECE ((unsigned short)-1)
+
+#define BLACK_PAWN PIECE(BLACK, PAWN)
+#define BLACK_KNIGHT PIECE(BLACK, KNIGHT)
+#define BLACK_BISHOP PIECE(BLACK, BISHOP)
+#define BLACK_ROOK PIECE(BLACK, ROOK)
+#define BLACK_QUEEN PIECE(BLACK, QUEEN)
+#define BLACK_KING PIECE(BLACK, KING)
+
+#define WHITE_PAWN PIECE(WHITE, PAWN)
+#define WHITE_KNIGHT PIECE(WHITE, KNIGHT)
+#define WHITE_BISHOP PIECE(WHITE, BISHOP)
+#define WHITE_ROOK PIECE(WHITE, ROOK)
+#define WHITE_QUEEN PIECE(WHITE, QUEEN)
+#define WHITE_KING PIECE(WHITE, KING)
 
 
 typedef struct Castling
@@ -90,7 +123,9 @@ typedef struct Board
 void 		copy_board				(Board *dst, Board *src);
 Piece 		piece_from_char			(char c);
 char 		char_from_piece			(Piece p);
-gboolean	from_fen				(Board *board, const char *fen_str);
+gboolean 	board_from_fen			(Board *board, 
+									 const gchar *fen_str, 
+									 GError **error);
 gint 		to_fen 					(Board *board, gchar *fen);
 void 		print_board				(Board *b);
 gboolean 	in_check				(Board *board, Player p);

@@ -12,9 +12,15 @@ int main(int argc, char *argv[])
 
     GError *err = NULL;
     chessboard_load_svgs (piece_svgs_path, &err);
-	if (err != NULL) {
-		printf("Error loading SVGs:\n%s\n", err->message);
-		return 1;
+	if (err != NULL) 
+    {
+        err = NULL;
+        chessboard_load_svgs ("../pieces/merida/", &err);
+        if (err != NULL) 
+        {
+            printf("Error loading SVGs:\n%s\n", err->message);
+            return 1;
+        }
 	}
 
     initialize_widgets ();

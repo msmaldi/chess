@@ -1,5 +1,5 @@
-#ifndef GAME_H_
-#define GAME_H_
+#ifndef GAME_H
+#define GAME_H
 
 #include <glib.h>
 #include "board.h"
@@ -30,4 +30,4 @@ Game 		*last_node			(Game *game);
 gboolean 	 has_children		(Game *game);
 void 	 	 free_game			(Game *game);
 
-#endif // include guard
+#endif

@@ -1,27 +1,14 @@
 #ifndef MOVES_H
 #define MOVES_H
 
-//
-// A move is represented as 4 bytes, with the start square in the two most
-// significant bytes, and the end square in the two least significant
-// bytes. Each pair of bytes has the file in the most significant byte, and
-// the rank in the least significant byte.
-//typedef uint_fast64_t Move;
-//#define MOVE(start, end) ((Move)(((start) << 16) | (end)))
-//#define START_SQUARE(m)  ((m) >> 16)
-//#define END_SQUARE(m)    ((m) & 0xFFFF)
-
-//#define NULL_MOVE ((Move)(~((Move)0)))
-
 #define FILE_CHAR(file) ('a' + (file))
 #define CHAR_FILE(c)    ((c) - 'a')
 #define RANK_CHAR(rank) ('1' + (rank))
 #define CHAR_RANK(c)    ((c) - '1')
-
 //
 //
 
-typedef struct _MMove
+typedef struct _Move
 {
     Square start;
     Square end;
@@ -30,10 +17,6 @@ typedef struct _MMove
 
 Move MOVE (Square start, Square end);
 Move MOVE_WITH_PROMOTION (Square start, Square end, Piece_type promotion);
-
-Square START_SQUARE (Move m);
-
-Square END_SQUARE (Move m);
 Move NULL_MOVE ();
 
 gboolean    eq_move (Move x, Move y);

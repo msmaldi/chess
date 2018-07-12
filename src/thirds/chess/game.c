@@ -33,7 +33,8 @@ Game*
 game_new_startpos (void)
 {
 	Game *game = game_new ();
-	gboolean success = from_fen (game->board, start_board_fen);
+	GError *error = NULL;
+	gboolean success = board_from_fen (game->board, start_board_fen, &error);
 	g_assert (success);
 
 	game->move     = NULL_MOVE ();

@@ -116,104 +116,367 @@ gint to_fen (Board *board, gchar *fen)
 	return g_snprintf (fen, 100, "%s %s %s %s %d %d", board_fen, curr_player, castling, en_passant, half_move_clock, move_number);
 }
 
+// Initializes a Board given a string containing Forsyth-Edwards Notation (FEN)
+// See <http://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation> for a
+// description, and <http://kirill-kryukov.com/chess/doc/fen.html> for the spec
+// TODO: this is way too fucking long
 /*
 ---------1---------2---------3---------4---------5---------6---------7---------8---------9---------0
 rnbqkbnr/pppppppp/pppppppp/pppppppp/PPPPPPPP/PPPPPPPP/PPPPPPPP/RNBQKBNR w KQkq e3 40 1100
 
 Fen string can have maximous 89 caracters + 1 for NULL, gchar fen[90] is ideial
-
 */
 
-// Initializes a Board given a string containing Forsyth-Edwards Notation (FEN)
-// See <http://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation> for a
-// description, and <http://kirill-kryukov.com/chess/doc/fen.html> for the spec
-// TODO: this is way too fucking long
-gboolean from_fen(Board *board, const char *fen_str)
+static gboolean 
+is_piece (gchar c)
 {
-	uint i = 0;
+	return c == 'r' || c == 'n' || c == 'b' || c == 'q' || c == 'k' || c == 'p'
+		|| c == 'R' || c == 'N' || c == 'B' || c == 'Q' || c == 'K' || c == 'P';
+}
 
-	for (int y = BOARD_SIZE - 1; y >= 0; y--) {
-		char c;
-		uint x = 0;
-		while ((c = fen_str[i++]) != '/' && c != ' ') {
-			if (isdigit(c)) {
-				if (c == '0') // "Skip zero files" makes no sense
-					return false;
+static gboolean
+is_number_fen_rank (gchar c)
+{
+	return ('1' <= c && c <= '8');
+}
 
-				for (int n = 0; n < c - '0'; n++)
-					PIECE_AT(board, x + n, y) = EMPTY;
+Piece piece_from_char_n (gchar c)
+{	
+	switch (c)
+	{
+		case 'p': return PIECE(BLACK, PAWN);
+		case 'n': return PIECE(BLACK, KNIGHT);
+		case 'b': return PIECE(BLACK, BISHOP);
+		case 'r': return PIECE(BLACK, ROOK);
+		case 'q': return PIECE(BLACK, QUEEN);
+		case 'k': return PIECE(BLACK, KING);
+		case 'P': return PIECE(WHITE, PAWN);
+		case 'N': return PIECE(WHITE, KNIGHT);
+		case 'B': return PIECE(WHITE, BISHOP);
+		case 'R': return PIECE(WHITE, ROOK);
+		case 'Q': return PIECE(WHITE, QUEEN);
+		case 'K': return PIECE(WHITE, KING);
+		default: return EMPTY;
+	}
+}
 
-				x += c - '0';
-				continue;
-			} else {
-				PIECE_AT(board, x, y) = piece_from_char(c);
-			}
-
-			x++;
-		}
+gboolean 
+board_from_fen (Board *board, const gchar *fen_str, GError **error)
+{
+	glong fen_len = g_utf8_strlen (fen_str, 90);
+	if (fen_len >= 90)
+	{
+		g_set_error (error, 1, 1, "Fen length %ld is too long.", fen_len);
+		return FALSE;
 	}
 
-	char player = fen_str[i++];
-	if (player == 'w')
-		board->turn = WHITE;
-	else if (player == 'b')
-		board->turn = BLACK;
-	else
-		return false;
+	gint backslash_count = 0;
+	for (gint i = 0; i < fen_len; i++)
+	{
+		if (fen_str[i] == '/')
+			backslash_count++;
+	}
+	if (backslash_count != 7)
+	{
+		g_set_error (error, 1, 1, 
+					 "Fen must have 7 backslashs (/) found %d.", 
+					 backslash_count);
+		return FALSE;
+	}
 
-	if (fen_str[i++] != ' ')
-		return false;
+	//gchar* fen_ptr = fen_str;
+	gint index = 0;
+	gint w_king_count = 0;
+	gint b_king_count = 0;
+	for (int rank = RANK_8; rank >= RANK_1; rank--)
+	{
+		gint file = 0;
+		while (fen_str[index] != '/' && fen_str[index] != ' ')
+		{
+			if (is_number_fen_rank (fen_str[index]))
+			{
+				gint empty_squares = fen_str[index] - '0';
+				//g_print ("\tFile: %c\t Rank: %d\t Empty: %d\n", file + 'a', rank + 1, empty_squares);	
+				if (file + empty_squares > 8)
+				{
+					g_set_error (error, 1, 1, 
+						"Rank %d length > 8", rank + 1);
+					return FALSE;
+				}				
+				for(gint i = 0; i < empty_squares; i++)
+				{		
+					PIECE_AT(board, file + i, rank) = EMPTY;
+				}
+				file += empty_squares;
+			}
+			else if (is_piece (fen_str[index]))
+			{
+				if (file + 1 > 8)
+				{
+					g_set_error (error, 1, 1, 
+						"Rank %d length > 8", rank + 1);
+					return FALSE;
+				}	
+				//g_print ("\tFile: %c\t Rank: %d\t Piece: %c\n", file + 'a', rank + 1, fen_str[index]);	
+				Piece piece = piece_from_char_n (fen_str[index]);
+				if (piece == PIECE(BLACK, KING))
+					b_king_count++;
+				if (piece == PIECE(WHITE, KING))
+					w_king_count++;
+
+				PIECE_AT (board, file, rank) = piece;
+				file++;
+			}
+			else
+			{
+				g_set_error (error, 1, 1, 
+					 "Found '%c', character must be [rnbqkpRNBQKP] or [1-8].", 
+					 fen_str[index]);
+				return FALSE;
+			}
+			index++;
+		}
+		index++;
+	}
+	if (b_king_count != 1)
+	{
+		g_set_error (error, 1, 1, 
+			"Found %d Black King, must be 1.", 
+			 b_king_count);
+		return FALSE;
+	}
+	if (w_king_count != 1)
+	{
+		g_set_error (error, 1, 1, 
+			"Found %d White King, must be 1.", 
+			 w_king_count);
+		return FALSE;
+	}
+	gchar active_player = fen_str[index++];
+	if (active_player == 'w')
+	{
+		board->turn = WHITE;
+	}
+	else if (active_player == 'b')
+	{
+		board->turn = BLACK;
+	}
+	else
+	{
+		g_set_error (error, 1, 1, 
+			"Active player found '%c', must be 'w' or 'b'.", 
+			 active_player);
+		return FALSE;
+	}
+	gchar space;
+	if ((space = fen_str[index++]) != ' ')
+	{
+		g_set_error (error, 1, 1, 
+			"Found '%c', expected a whitespace (' ') after active player.", 
+			 space);
+		return FALSE;
+	}
 
 	Castling b_castling = { false, false };
-	Castling w_castling = { false, false };
-	char c;
-	while ((c = fen_str[i++]) != ' ') {
-		switch (c) {
-		case 'K': w_castling.kingside  = true; break;
-		case 'Q': w_castling.queenside = true; break;
-		case 'k': b_castling.kingside  = true; break;
-		case 'q': b_castling.queenside = true; break;
-		case '-': break;
-		default: return false;
+	Castling w_castling = { false, false };	
+	gchar casling_str[5] = { '-', '\0', '\0', '\0', '\0' };
+	for(gint i = 0; i < 4; i++)
+	{
+		if (fen_str[index] != ' ')
+			casling_str[i] = fen_str[index++];
+	}
+	//g_print ("%s'%c'\n", casling_str, fen_str[index]);
+	for(gint i = 0; i < 4; i++)
+	{
+		if (casling_str[i] == '-' || casling_str[i] == '\0')
+			break;
+		else if (casling_str[i] == 'K')
+			w_castling.kingside = true;
+		else if (casling_str[i] == 'Q')
+			w_castling.queenside = true;
+		else if (casling_str[i] == 'k')
+			b_castling.kingside = true;
+		else if (casling_str[i] == 'q')
+			b_castling.queenside = true;
+		else
+		{
+			g_set_error (error, 1, 1, 
+			"Found '%c', expected - or KQkq", 
+			 casling_str[i]);
+			return FALSE;
 		}
 	}
-
 	board->castling[BLACK] = b_castling;
 	board->castling[WHITE] = w_castling;
 
-	char file_char = fen_str[i++];
-	if (file_char == '-') {
-		board->en_passant = NULL_SQUARE;
-	} else {
-		if (file_char < 'a' || file_char > 'g')
-			return false;
-
-		char rank_char = fen_str[i++];
-		if (!isdigit(rank_char))
-			return false;
-
-		board->en_passant = SQUARE(file_char - 'a', rank_char - '1');
+	space = fen_str[index++];
+	if (space != ' ')
+	{
+		g_set_error (error, 1, 1, 
+			"Found '%c', expected a whitespace (' ') after castling.", 
+			 space);
+		return FALSE;
 	}
 
-	if (fen_str[i++] != ' ')
-		return false;
+	gchar file_char = fen_str[index++];
+	if (file_char == '-')
+	{
+		board->en_passant == NULL_SQUARE;
+	}
+	else
+	{
+		if ('a' <= file_char && file_char <= 'h')
+		{
+			gchar rank_char = fen_str[index++];
+			if (rank_char == '3' || rank_char == '6')
+			{
+				if ((rank_char == '6' && active_player == 'b') ||
+					(rank_char == '3' && active_player == 'w'))
+				{
+					g_set_error (error, 1, 1, 
+						"Found '%c%c' en passant, for player %s must be rank %c.", 
+						file_char, rank_char, 
+						active_player == 'b' ? "Black": "White",
+						rank_char == '3' ? '6': '3');
+					return FALSE;
+				}
+				gint rank = CHAR_RANK (rank_char);
+				gint file = CHAR_FILE (file_char);
 
-	uint half_move_clock;
-	if (sscanf(fen_str + i, "%u", &half_move_clock) != 1)
-		return false;
+				if (active_player == 'b')
+				{
+					Piece pawn = PIECE_AT_SQUARE (board, SQUARE (file, RANK_4));
+					Piece target = PIECE_AT_SQUARE (board, SQUARE (file, rank));
+					Piece empty = PIECE_AT_SQUARE (board, SQUARE (file, RANK_2));
+					if (pawn != WHITE_PAWN || PIECE_TYPE(target) != EMPTY || PIECE_TYPE(empty) != EMPTY)
+					{
+						g_set_error (error, 1, 1, 
+							"Found '%c%c' en passant, is invalid.",
+							file_char, rank_char);
+						return FALSE;
+					}
+				}
+				else
+				{
+					Piece pawn = PIECE_AT_SQUARE (board, SQUARE (file, RANK_5));
+					Piece target = PIECE_AT_SQUARE (board, SQUARE (file, rank));
+					Piece empty = PIECE_AT_SQUARE (board, SQUARE (file, RANK_7));
+					if (pawn != BLACK_PAWN || PIECE_TYPE(target) != EMPTY || PIECE_TYPE(empty) != EMPTY)
+					{
+						g_set_error (error, 1, 1, 
+							"Found '%c%c' en passant, is invalid.",
+							file_char, rank_char);
+						return FALSE;
+					}
+				}
+				board->en_passant = SQUARE (file, rank);
+			}
+			else
+			{
+				g_set_error (error, 1, 1, 
+					"Found '%c', expected 3 or 6 for rank.", 
+					rank_char);
+				return FALSE;
+			}
+		}
+		else
+		{
+			g_set_error (error, 1, 1, 
+			"Found '%c', expected a [a-h] on en passant file.", 
+			 file_char);
+			return FALSE;
+		}
+	}
+	space = fen_str[index++];
+	if (space != ' ')
+	{
+		g_set_error (error, 1, 1, 
+			"Found '%c', expected a whitespace (' ') after en passant.", 
+			 space);
+		return FALSE;
+	}
 
+	
+	gchar half_move_clock_sz[4] = { '\0', '\0', '\0', '\0' };	
+	for(gint i = 0; i < 3; i++)
+	{
+		if (fen_str[index] != ' ')
+		{
+			half_move_clock_sz[i] = fen_str[index];
+			index++;
+		}
+	}
+	if (half_move_clock_sz[2] != '\0')
+	{
+		g_set_error (error, 1, 1, 
+			"Found '%s', it must be number 0 to 50.", 
+			 half_move_clock_sz);
+		return FALSE;
+	}
+	gchar *endptr = NULL;
+	guint half_move_clock = g_ascii_strtoull (half_move_clock_sz, &endptr, 10);
+	if (endptr == half_move_clock_sz)
+	{
+		g_set_error (error, 1, 1, 
+			"Found '%s', it must be number 0 to 99.", 
+			 half_move_clock_sz);
+		return FALSE;
+	}
 	board->half_move_clock = half_move_clock;
-	while (fen_str[i++] != ' ')
-		;
 
-	uint move_number;
-	if (sscanf(fen_str + i, "%u", &move_number) != 1)
-		return false;
-
+	space = fen_str[index++];
+	if (space != ' ')
+	{
+		g_set_error (error, 1, 1, 
+			"Found '%c', expected a whitespace (' ') after en passant.", 
+			 space);
+		return FALSE;
+	}
+	
+	gchar move_number_sz[6] = { '\0', '\0', '\0', '\0', '\0', '\0' };	
+	for(gint i = 0; i < 5; i++)
+	{
+		if ('0' <= fen_str[index] && fen_str[index] <= '9')//(fen_str[index] != '\0')
+		{
+			move_number_sz[i] = fen_str[index];
+			index++;
+		}
+	}
+	if (fen_str[index] != '\0')
+	{
+		g_set_error (error, 1, 1, 
+			"Expected end of string, but found '%c'.", 
+			 fen_str[index]);
+		return FALSE;
+	}
+	if (move_number_sz[4] != '\0')
+	{
+		g_set_error (error, 1, 1, 
+			"Expected end of string, but found '%c'.", 
+			 move_number_sz[4]);
+		return FALSE;
+	}
+	endptr = NULL;
+	guint move_number = g_ascii_strtoull (move_number_sz, &endptr, 10);
+	if (endptr == move_number_sz)
+	{
+		g_set_error (error, 1, 1, 
+			"Found '%s', it must be number 0 to 9999.", 
+			 move_number_sz);
+		return FALSE;
+	}
+	if (move_number < half_move_clock)
+	{
+		g_set_error (error, 1, 1, 
+			"Total Moves (%d) < Half Move Clock (%d).", 
+			 move_number, half_move_clock);
+		return FALSE;
+	}
 	board->move_number = move_number;
 
-	// TODO: check there's no trailing shit after a valid FEN string?
-	return true;
+	
+
+	return TRUE;
 }
 
 // For debugging

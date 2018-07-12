@@ -2,6 +2,7 @@
 #include "../thirds/chess/board.h"
 #include "../thirds/chess/game.h"
 #include "../thirds/chess/pgn.h"
+#include "../notebook/page_home.h"
 
 ChessBoard *chessboard;
 

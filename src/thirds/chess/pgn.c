@@ -701,8 +701,11 @@ static bool parse_tokens(PGN *pgn, GArray *tokens, GError **err)
 
 	Game *game = game_new ();
 	pgn->game = game;
+	GError *error = NULL;
 	// TODO: Use value in start board tag if present.
-	from_fen(game->board, start_board_fen);
+
+	//from_fen(game->board, start_board_fen);
+	board_from_fen (game->board, start_board_fen, &error);
 
 	// TODO: variations, NAG
 	while (i < tokens->len) {

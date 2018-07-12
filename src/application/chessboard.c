@@ -1,4 +1,6 @@
 #include "chessboard.h"
+#include "../notebook/page_home.h"
+#include "fen_box.h"
 #include <librsvg/rsvg.h>
 #include <string.h>
 
@@ -196,8 +198,8 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 			// Highlight the source and target squares of the last move
 			Move last_move = chessboard->game->move;
 			Square s = SQUARE(x, y);
-			if ( !eq_move (last_move, NULL_MOVE ()) && //last_move != NULL_MOVE () &&
-					(s == START_SQUARE(last_move) || s == END_SQUARE(last_move))) {
+			if ( !eq_move (last_move, NULL_MOVE ()) &&
+					(s == (last_move.start) || s == (last_move.end))) {
 				cairo_set_source_rgb(cr, 0.225, 0.26, 0.3505);
 				cairo_set_line_width(cr, HIGHLIGHT_LINE_WIDTH);
 				cairo_translate(cr, HIGHLIGHT_LINE_WIDTH / 2, HIGHLIGHT_LINE_WIDTH / 2);
@@ -338,8 +340,8 @@ chessboard_mouse_up_callback (GtkWidget *widget,
 	return FALSE;
 }
 
-gchar *files[BOARD_SIZE] = { "a", "b", "c", "d", "e", "f", "g", "h" };
-gchar *ranks[BOARD_SIZE] = { "1", "2", "3", "4", "5", "6", "7", "8" };
+static gchar *files[BOARD_SIZE] = { "a", "b", "c", "d", "e", "f", "g", "h" };
+static gchar *ranks[BOARD_SIZE] = { "1", "2", "3", "4", "5", "6", "7", "8" };
 
 void chessboard_update_board_labels (ChessBoard *chessboard)
 {

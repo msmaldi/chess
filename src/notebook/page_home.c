@@ -1,15 +1,17 @@
 #include <gtk/gtk.h>
-#include "../engine/uci_engine.h"
 #include "notebook.h"
+#include "../engine/uci_engine.h"
 #include "../application/application.h"
 #include "../thirds/chess/pgn.h"
 
 void set_button_sensitivity ();
 void open_pgn_callback (GtkWidget *widget, gpointer data);
 void new_game_callback (GtkWidget *widget, gpointer data);
-gboolean go_next_button_click_callback (GtkWidget *widget, gpointer data);
-gboolean go_back_button_click_callback (GtkWidget *widget, gpointer data);
-gboolean flip_button_click_callback (GtkWidget *widget, gpointer data);
+void go_next_button_click_callback (GtkWidget *widget, gpointer data);
+void go_back_button_click_callback (GtkWidget *widget, gpointer data);
+void flip_button_click_callback (GtkWidget *widget, gpointer data);
+void copy_position_click_callback (GtkWidget *widget, gpointer data);
+void paste_position_click_callback (GtkWidget *widget, gpointer data);
 
 GtkWidget*
 page_home_box ()
@@ -62,9 +64,6 @@ page_home_box ()
 
     gtk_container_add (GTK_CONTAINER (home_box), GTK_WIDGET (home_box_game_grid));
 
-
-
-
     GtkWidget *home_box_board_grid = gtk_grid_new ();
 
     home_button_flipboard = gtk_button_new_with_label ("Flip Board");
@@ -86,8 +85,6 @@ page_home_box ()
 
     gtk_container_add (GTK_CONTAINER (home_box), GTK_WIDGET (home_box_board_grid));
 
-    
-
     g_signal_connect(G_OBJECT(home_button_newgame), "clicked",
 		    G_CALLBACK(new_game_callback), chessboard);
 
@@ -104,19 +101,28 @@ page_home_box ()
 	//	    G_CALLBACK(cb_execute), chessboard);
 
     g_signal_connect(G_OBJECT(home_button_flipboard), "clicked",
-		    G_CALLBACK(flip_button_click_callback), NULL);
+		G_CALLBACK(flip_button_click_callback), NULL);
 
+    g_signal_connect(G_OBJECT(home_button_copyposition), "clicked",
+		G_CALLBACK(copy_position_click_callback), fen_input);
+
+    g_signal_connect(G_OBJECT(home_button_pasteposition), "clicked",
+		G_CALLBACK(paste_position_click_callback), fen_input);
+
+        
 
     return home_box;
 }
 
-void set_button_sensitivity ()
+void
+set_button_sensitivity ()
 {
 	gtk_widget_set_sensitive (home_button_undo, chessboard->game->parent != NULL);
 	gtk_widget_set_sensitive (home_button_redo, has_children(chessboard->game));
 }
 
-void open_pgn_callback(GtkWidget *widget, gpointer data)
+void
+open_pgn_callback(GtkWidget *widget, gpointer data)
 {
 	GtkWindow *parent = (GtkWindow*)data;
 
@@ -160,7 +166,8 @@ void open_pgn_callback(GtkWidget *widget, gpointer data)
     update_fen_input ();
 }
 
-void new_game_callback (GtkWidget *widget, gpointer data)
+void
+new_game_callback (GtkWidget *widget, gpointer data)
 {
     free_game (chessboard->game);
 	chessboard->game = game_new_startpos ();
@@ -171,7 +178,7 @@ void new_game_callback (GtkWidget *widget, gpointer data)
     update_fen_input ();
 }
 
-gboolean
+void
 go_next_button_click_callback (GtkWidget *widget, gpointer data)
 {
 	chessboard->game = first_child (chessboard->game);
@@ -179,11 +186,9 @@ go_next_button_click_callback (GtkWidget *widget, gpointer data)
 
 	set_button_sensitivity();
     update_fen_input ();
-
-	return FALSE;
 }
 
-gboolean
+void
 go_back_button_click_callback (GtkWidget *widget, gpointer data)
 {
 	chessboard->game = chessboard->game->parent;
@@ -191,14 +196,62 @@ go_back_button_click_callback (GtkWidget *widget, gpointer data)
 
 	set_button_sensitivity();
     update_fen_input ();
-
-	return FALSE;
 }
 
-gboolean
+void
 flip_button_click_callback (GtkWidget *widget, gpointer data)
 {
 	chessboard_flip (chessboard);
+}
 
-	return FALSE;
+void
+paste_received (GtkClipboard *clipboard,
+                const gchar  *text,
+                gpointer      user_data)
+{
+    Board *board = g_new (Board, 1);
+    g_print ("Pasted %s\n", text);
+
+    GError *error = NULL;
+    gboolean is_success = board_from_fen (board, text, &error);
+    if (is_success)
+    {
+        g_print ("OK\n", text);
+        free_game(chessboard->game);
+        chessboard->game = game_new ();
+        copy_board (chessboard->game->board, board);
+
+        gtk_widget_queue_draw (chessboard->board_area);
+
+        set_button_sensitivity ();
+        update_fen_input ();
+    }
+    else
+    {
+        g_print ("%s\n", error->message);     
+    }
+
+    g_free (board);
+
+}
+
+void
+paste_position_click_callback (GtkWidget *widget, gpointer data)
+{
+    GtkClipboard *clipboard = gtk_widget_get_clipboard (GTK_WIDGET (fen_input),
+                                        GDK_SELECTION_CLIPBOARD);
+
+    gtk_clipboard_request_text (clipboard, paste_received, NULL);
+
+}
+
+void
+copy_position_click_callback (GtkWidget *widget, gpointer data)
+{
+    GtkClipboard *clipboard = 
+        gtk_widget_get_clipboard (GTK_WIDGET (fen_input), 
+                                  GDK_SELECTION_CLIPBOARD);
+    gtk_clipboard_set_text (clipboard, 
+                            gtk_entry_get_text (GTK_ENTRY (fen_input)), 100);
+    g_print ("Coppied FEN: %s\n", fen);
 }
