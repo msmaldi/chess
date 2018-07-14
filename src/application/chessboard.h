@@ -16,6 +16,10 @@ typedef struct _ChessBoard
     GtkWidget *end_label[BOARD_SIZE];
     GtkWidget *right_label[BOARD_SIZE];
     GtkWidget *left_label[BOARD_SIZE];
+    
+    GtkWidget *prev_move_button;
+    GtkWidget *next_move_button;
+
     gboolean flipped;
 
     Square drag_source;
@@ -33,7 +37,7 @@ void           chessboard_set_startpos   (ChessBoard *chessboard);
 //void            chessboard_set_pgn       (ChessBoard *chessboard,
 //                                          PGN        pgn,
 //                                          GError     **error);
-void           chessboard_set_game      (ChessBoard *chessboard, Game *game);
+void           chessboard_set_game       (ChessBoard *chessboard, Game *game);
 
 
 void           chessboard_flip           (ChessBoard *chessboard);

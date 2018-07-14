@@ -1,6 +1,36 @@
 #ifndef MOVES_H
 #define MOVES_H
 
+#include "board.h"
+
+//
+// A move is represented as 4 bytes, with the start square in the two most
+// significant bytes, and the end square in the two least significant
+// bytes. Each pair of bytes has the file in the most significant byte, and
+// the rank in the least significant byte.
+//
+// A move is represented as 8 bytes, 
+
+//  |    2 bytes    |    2 bytes    |    2 bytes    |    2 bytes    |                            
+//  63------------48----------------32--------------16-------------0
+//  |     empty     |   Piece Type  |  Square Start |  Square end   |                                               
+//
+//
+//
+
+
+
+
+typedef u_int64_t Mov;
+
+#define MOV(start, end)     ((Mov) (((start) << 16) | (end)))
+#define MOVE_PROMOTE(m, piece) ((Mov)(((u_int64_t)(piece) << 32) | (m)))
+#define START_SQUARE(m)     ((Square)(((m) & 0xFFFFFFFF) >> 16))
+#define END_SQUARE(m)    (((m)) & 0xFFFF)
+#define PROMOTION(m)     ((Piece_type) (((m) & 0xFFFFFFFFFFFFul) >> 32))
+#define NULL_MOV ((Mov)(~((Mov)0)))
+
+
 #define FILE_CHAR(file) ('a' + (file))
 #define CHAR_FILE(c)    ((c) - 'a')
 #define RANK_CHAR(rank) ('1' + (rank))

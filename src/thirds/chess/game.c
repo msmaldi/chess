@@ -1,7 +1,8 @@
 #include "board.h"
 #include "game.h"
 
-Game *game_new (void)
+Game*
+game_new (void)
 {
 	Game *game = g_new (Game, 1);
 
@@ -115,5 +116,5 @@ free_game (Game *game)
 	if (game->sibling != NULL)
 		free_game (game->sibling);
 	if (game->children != NULL)
-		free_game (game->sibling);
+		free_game (game->children);
 }

@@ -553,7 +553,7 @@ static Move parse_move(Board *board, char *notation)
 			else
 				m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
 
-			g_print ("%s %d %d %d %d %d\n", notation, x, y, target_file, target_rank, promotion);
+			//g_print ("%s %d %d %d %d %d\n", notation, x, y, target_file, target_rank, promotion);
 
 
 

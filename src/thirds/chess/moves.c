@@ -207,8 +207,8 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 		int end_y = SQUARE_Y (end);
 		if (end_y == 7 || end_y == 0)
 		{
-			if (move.promotion != QUEEN || move.promotion != ROOK ||
-				move.promotion != KNIGHT || move.promotion != BISHOP)
+			if (move.promotion == QUEEN || move.promotion == ROOK ||
+				move.promotion == KNIGHT || move.promotion == BISHOP)
 			{
 				legal_movement = true;
 				g_print ("Promote OK %d", move.promotion);

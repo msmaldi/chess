@@ -1,3 +1,5 @@
 .vscode/
 *.o
 chess
+board_test
+moves_test
