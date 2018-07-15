@@ -1,0 +1,16 @@
+[Event "World Rapid Championship"]
+[Site "Riyadh KSA"]
+[Date "2017.12.26"]
+[EventDate "2017.12.26"]
+[Round "1.57"]
+[Result "1-0"]
+[White "Dmitry Kokarev"]
+[Black "Ahmed Al Omary"]
+[ECO "C11"]
+[WhiteElo "2615"]
+[BlackElo "1875"]
+[PlyCount "25"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. e5 Nfd7 5. f4 c5 6. Nf3 Nc6
+7. Be3 Qb6 8. Na4 Qa5+ 9. c3 b5 10. Nxc5 Bxc5 11. dxc5 b4
+12. a3 bxc3 13. b4 1-0

@@ -1,0 +1,16 @@
+[Event "World Rapid Championship"]
+[Site "Riyadh KSA"]
+[Date "2017.12.26"]
+[EventDate "2017.12.26"]
+[Round "2.66"]
+[Result "1-0"]
+[White "Johan-Sebastian Christiansen"]
+[Black "Hassan M Al Bargi"]
+[ECO "B01"]
+[WhiteElo "2495"]
+[BlackElo "1579"]
+[PlyCount "21"]
+
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qd8 4. d4 Nf6 5. Nf3 c6 6. Bc4
+Bg4 7. Bxf7+ Kxf7 8. Ne5+ Kg8 9. Nxg4 Nbd7 10. Qe2 Nxg4
+11. Qe6# 1-0
