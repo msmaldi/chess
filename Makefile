@@ -50,20 +50,26 @@ pgn.o: src/thirds/chess/pgn.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
 
-test: board_test moves_test
-	./moves_test
+test: test_board test_moves test_pgn
+	./test_board && ./test_moves && ./test_pgn
 
-board_test: board_test.o board.o moves.o
+test_board: test_board.o board.o moves.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
-board_test.o: test/board_test.c
+test_board.o: test/board_test.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
-moves_test: moves_test.o board.o moves.o
+test_moves: test_moves.o board.o moves.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
-moves_test.o: test/moves_test.c
+test_moves.o: test/moves_test.c
+	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
+
+test_pgn: test_pgn.o pgn.o board.o moves.o game.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+
+test_pgn.o: test/pgn_test.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
 clean:
-	rm -f chess board_test moves_test *.o
+	rm -f chess test_* *.o
