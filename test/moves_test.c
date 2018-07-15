@@ -6,34 +6,32 @@
 int 
 main (void)
 {
-    Square a1 = SQUARE (FILE_A, RANK_1);
-    Square b2 = SQUARE (FILE_B, RANK_2);
+    Square e2 = SQUARE (FILE_E, RANK_2);
+    Square e4 = SQUARE (FILE_E, RANK_4);
 
-    Mov m = MOV (a1, b2);
+    Move m = MOVE (e2, e4);
+    //chess_print_move (m);
 
-    Square expected_a1 = START_SQUARE(m);
-    Square expected_b2 = END_SQUARE(m);
+    Square expected_e2 = START_SQUARE (m);
+    Square expected_e4 = END_SQUARE (m);
+    PieceType queen = PROMOTION (m);
 
+    g_assert (e2 == expected_e2);
+    g_assert (e4 == expected_e4);
 
-    g_print ("%llu %llu\n", expected_a1, a1);
-    g_assert (expected_a1 == a1);
-    g_print ("%llu %llu\n", expected_b2, b2);
-    g_assert (expected_b2 == b2);
-
-
-    Mov p = MOV_PROMOTION (m, QUEEN);
-
-    Square pexpected_a1 = START_SQUARE(p);
-    Square pexpected_b2 = END_SQUARE(p);
-    Piece_type queen = PROMOTION (p);
-
-    g_print ("%llu %llu\n", pexpected_a1, a1);
-    g_assert (pexpected_a1 == a1);
-    g_print ("%llu %llu\n", pexpected_b2, b2);
-    g_assert (pexpected_b2 == b2);
-    g_print ("%llu %llu\n", queen, QUEEN);
     g_assert (queen == QUEEN);
 
+    m = MOVE_PROMOTE (m, BISHOP);
+    PieceType bishop = PROMOTION (m);
+    g_assert (bishop == BISHOP);
+
+    m = MOVE_PROMOTE (m, KNIGHT);
+    PieceType knight = PROMOTION (m);
+    g_assert (knight == KNIGHT);
+
+    m = MOVE_PROMOTE (m, ROOK);
+    PieceType rook = PROMOTION (m);
+    g_assert (rook == ROOK);
 
     return 0;
 }

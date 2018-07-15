@@ -9,6 +9,9 @@
 #define BOARD_SIZE 8
 #define PLAYERS 2
 
+typedef uint_fast8_t File;
+typedef uint_fast8_t Rank;
+
 #define RANK_8 7
 #define RANK_7 6
 #define RANK_6 5
@@ -32,6 +35,8 @@ typedef uint_fast16_t Square;
 #define SQUARE(x, y) (((x) << 8) | (y))
 #define SQUARE_X(s) ((s) >> 8)
 #define SQUARE_Y(s) ((s) & 0xF)
+#define SQUARE_FILE(s) ((s) >> 8)
+#define SQUARE_RANK(s) ((s) & 0xF)
 
 #define NULL_SQUARE ((Square)(~((Square)0)))
 
@@ -48,7 +53,7 @@ typedef enum Player
 #define OTHER_PLAYER(p) ((p) == WHITE ? BLACK : WHITE)
 
 // The order of these matters
-typedef enum Piece_type
+typedef enum _PieceType
 {
 	EMPTY,
 	PAWN,
@@ -57,14 +62,15 @@ typedef enum Piece_type
 	ROOK,
 	QUEEN,
 	KING,
-} Piece_type;
+} PieceType;
 
 #define PIECE_TYPES 6
 
 #define PLAYER(x) ((Player)((x) >> (sizeof(Piece) * 8 - 1)))
-#define PIECE_TYPE(x) ((Piece_type)((x) & ~(1 << (sizeof(Piece) * 8 - 1))))
+#define PIECE_TYPE(x) ((PieceType)((x) & ~(1 << (sizeof(Piece) * 8 - 1))))
 #define PIECE(p, t) ((Piece)(((p) << (sizeof(Piece) * 8 - 1)) | (t)))
 #define NULL_PIECE ((unsigned short)-1)
+#define IS_PROMOTABLE(p_type) ((p_type >= KNIGHT) && (p_type <= QUEEN))
 
 #define BLACK_PAWN PIECE(BLACK, PAWN)
 #define BLACK_KNIGHT PIECE(BLACK, KNIGHT)

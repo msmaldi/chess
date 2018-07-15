@@ -6,7 +6,7 @@ game_new (void)
 {
 	Game *game = g_new (Game, 1);
 
-	game->move     = NULL_MOVE ();
+	game->move     = NULL_MOVE;
 	game->board    = g_new (Board, 1);
 	game->parent   = NULL;
 	game->children = NULL;
@@ -38,7 +38,7 @@ game_new_startpos (void)
 	gboolean success = board_from_fen (game->board, start_board_fen, &error);
 	g_assert (success);
 
-	game->move     = NULL_MOVE ();
+	game->move     = NULL_MOVE;
 	game->parent   = NULL;
 	game->children = NULL;
 	game->sibling  = NULL;
@@ -57,10 +57,10 @@ add_child (Game *game, Move move)
 
 	while (children != NULL && 
 		   children->sibling != NULL &&
-		  !eq_move (children->move, move))
+		  (children->move != move))
 		children = children->sibling;
 
-	if (children != NULL && eq_move (children->move, move))
+	if (children != NULL && (children->move == move))
 	{
 		g_free(board);
 		return children;

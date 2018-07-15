@@ -3,6 +3,7 @@
 #include "fen_box.h"
 #include <librsvg/rsvg.h>
 #include <string.h>
+#include "../thirds/chess/moves.h"
 
 RsvgHandle *piece_svgs[2][6];
 
@@ -198,8 +199,8 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 			// Highlight the source and target squares of the last move
 			Move last_move = chessboard->game->move;
 			Square s = SQUARE(x, y);
-			if ( !eq_move (last_move, NULL_MOVE ()) &&
-					(s == (last_move.start) || s == (last_move.end))) {
+			if ( last_move != NULL_MOVE &&
+					(s == START_SQUARE (last_move) || s == END_SQUARE (last_move))) {
 				cairo_set_source_rgb(cr, 0.225, 0.26, 0.3505);
 				cairo_set_line_width(cr, HIGHLIGHT_LINE_WIDTH);
 				cairo_translate(cr, HIGHLIGHT_LINE_WIDTH / 2, HIGHLIGHT_LINE_WIDTH / 2);
@@ -318,6 +319,7 @@ chessboard_mouse_up_callback (GtkWidget *widget,
 	//
 	
 	Move m = MOVE(chessboard->drag_source, drag_target);
+	m = MOVE_PROMOTE (m, QUEEN);
 	if (legal_move(chessboard->game->board, m, true)) {
 		char notation[MAX_ALGEBRAIC_NOTATION_LENGTH];
 		algebraic_notation_for(chessboard->game->board, m, notation);

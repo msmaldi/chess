@@ -10,10 +10,10 @@
 void
 perform_move (Board *board, Move move)
 {
-	Square start = move.start;
-	Square end = move.end;
+	Square start = START_SQUARE (move);
+	Square end = END_SQUARE (move);
 	Piece p = PIECE_AT_SQUARE(board, start);
-	Piece_type type = PIECE_TYPE(p);
+	PieceType type = PIECE_TYPE(p);
 
 	board->half_move_clock++;
 	if (PLAYER(p) == BLACK)
@@ -73,15 +73,16 @@ perform_move (Board *board, Move move)
 	// Pawn get promotion
 	if (type == PAWN)
 	{
+		PieceType promotion = PROMOTION (move);
 		if (SQUARE_Y(end) == 0)
 		{
 			//if (move.promotion != QUEEN || move.promotion != ROOK ||
-			//	move.promotion != KNIGHT || move.promotion != BISHOP)
-			PIECE_AT_SQUARE(board, end) = PIECE(BLACK, move.promotion);
+			//	move.promotion != KNIGHT || move.promotion != BISHOP)			
+			PIECE_AT_SQUARE(board, end) = PIECE(BLACK, promotion);
 		}
 		else if (SQUARE_Y(end) == 7)
 		{
-			PIECE_AT_SQUARE(board, end) = PIECE(WHITE, move.promotion);
+			PIECE_AT_SQUARE(board, end) = PIECE(WHITE, promotion);
 		}
 	}
 }
@@ -89,26 +90,31 @@ perform_move (Board *board, Move move)
 gboolean
 legal_move (Board *board, Move move, gboolean check_for_check)
 {
-	Square start = move.start;
-	Square end = move.end;
+	Square start = START_SQUARE (move);
+	Square end = END_SQUARE (move);
 	int dx = SQUARE_X(end) - SQUARE_X(start);
 	int dy = SQUARE_Y(end) - SQUARE_Y(start);
 	Piece p = PIECE_AT_SQUARE(board, start);
-	Piece_type type = PIECE_TYPE(p);
+	PieceType type = PIECE_TYPE(p);
 	Piece at_end_square = PIECE_AT_SQUARE(board, end);
 
 	// Can't move a piece that isn't there
 	if (p == EMPTY)
-		return false;
+	{
+		return FALSE;
+	}
 
 	// Can only move if it's your turn
 	if (PLAYER(p) != board->turn)
-		return false;
+	{
+		return FALSE;
+	}
 
 	// Can't capture your own pieces
 	if (at_end_square != EMPTY && PLAYER(at_end_square) == PLAYER(p))
-		return false;
-	
+	{
+		return FALSE;
+	}
 	// Can't "move" a piece by putting it back onto the same square
 	if (dx == 0 && dy == 0)
 		return false;
@@ -138,9 +144,11 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	bool legal_movement = false;
 	switch (type) {
 	case PAWN:
+
 		if ((PLAYER(p) == WHITE && SQUARE_Y(start) == 1) ||
 			(PLAYER(p) == BLACK && SQUARE_Y(start) == 6)) {
-			if (ay != 1 && ay != 2) {
+			if (ay != 1 && ay != 2) 
+			{
 				legal_movement = false;
 				break;
 			}
@@ -160,7 +168,7 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 		}
 
 		if (dx == 1 || dx == -1) {
-			legal_movement = (at_end_square != EMPTY &&
+			legal_movement = (ay == 1 && at_end_square != EMPTY &&
 					PLAYER(at_end_square) != PLAYER(p)) ||
 					end == board->en_passant;
 			break;
@@ -186,6 +194,7 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 		}
 
 		if (SQUARE_X(end) == 6) {
+			
 			legal_movement = can_castle_kingside(board, PLAYER(p));
 			break;
 		} else if (SQUARE_X(end) == 2) {
@@ -207,17 +216,14 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 		int end_y = SQUARE_Y (end);
 		if (end_y == 7 || end_y == 0)
 		{
-			if (move.promotion == QUEEN || move.promotion == ROOK ||
-				move.promotion == KNIGHT || move.promotion == BISHOP)
+			PieceType promotion = PROMOTION (move);
+			if (IS_PROMOTABLE (promotion))
 			{
-				legal_movement = true;
-				g_print ("Promote OK %d", move.promotion);
-				
+				legal_movement = true;				
 			}
 			else
 			{
 				legal_movement = false;
-				g_print ("Illegal Move");
 			}
 		}
 	}
@@ -251,20 +257,54 @@ gives_mate(Board *board, Move move, Player player)
 	return checkmate(&copy, player);
 }
 
+
+static gboolean
+has_multiples_ambiguous_piece_n (Board *board, Move move)
+{
+	Square start_move = START_SQUARE (move);
+	PieceType type = PIECE_TYPE(PIECE_AT_SQUARE(board, start_move));
+	
+	gboolean rank_is_ambibuous = FALSE;
+	gboolean file_is_ambibuous = FALSE;
+	for (File file = FILE_A; file <= FILE_H; file++)
+	{
+		Square curr_square = SQUARE (file, SQUARE_RANK(start_move));
+		if (curr_square == START_SQUARE (move))
+			continue;
+		if (PIECE_TYPE(PIECE_AT_SQUARE(board, curr_square)) == type &&
+			legal_move(board, MOVE(curr_square, END_SQUARE (move)), true))
+		{
+			file_is_ambibuous = TRUE;
+		}
+	}
+	for(Rank rank = RANK_1; rank <= RANK_8; rank++)
+	{
+		Square curr_square = SQUARE (SQUARE_FILE (start_move), rank);
+		if (curr_square == START_SQUARE (move))
+			continue;
+		if (PIECE_TYPE(PIECE_AT_SQUARE(board, curr_square)) == type &&
+			legal_move(board, MOVE(curr_square, END_SQUARE (move)), true))
+		{
+			rank_is_ambibuous = TRUE;
+		}
+	}
+	return rank_is_ambibuous && file_is_ambibuous;
+}
+
 // Check whether we need to disambiguate between two pieces for a particular
 // move. e.g.: there are two rooks that can move to the square. If so, return
 // the location of the other piece that is confusing things.
 static Square 
 ambiguous_piece(Board *board, Move move)
 {
-	Piece_type type = PIECE_TYPE(PIECE_AT_SQUARE(board, (move.start)));
+	PieceType type = PIECE_TYPE(PIECE_AT_SQUARE(board, START_SQUARE (move)));
 	for (uint x = 0; x < BOARD_SIZE; x++) {
 		for (uint y = 0; y < BOARD_SIZE; y++) {
 			Square curr_square = SQUARE(x, y);
-			if (curr_square == (move.start))
+			if (curr_square == START_SQUARE (move))
 				continue;
 			if (PIECE_TYPE(PIECE_AT_SQUARE(board, curr_square)) == type &&
-					legal_move(board, MOVE(curr_square, (move.end)), true))
+					legal_move(board, MOVE(curr_square, END_SQUARE (move)), true))
 				return curr_square;
 		}
 	}
@@ -272,16 +312,16 @@ ambiguous_piece(Board *board, Move move)
 	return NULL_SQUARE;
 }
 
-// str should have space for at least 7 (MAX_ALGEBRAIC_NOTATION_LENGTH)
+// str should have space for at least 8 (MAX_ALGEBRAIC_NOTATION_LENGTH)
 // characters, to be able to fit the longest of moves.
 void
 algebraic_notation_for(Board *board, Move move, char *str)
 {
 	uint i = 0;
-	Square start = move.start;
-	Square end = move.end;
+	Square start = START_SQUARE (move);
+	Square end = END_SQUARE (move);
 	Piece p = PIECE_AT_SQUARE(board, start);
-	Piece_type type = PIECE_TYPE(p);
+	PieceType type = PIECE_TYPE(p);
 
 	// Castling
 	if (type == KING && abs(SQUARE_X(start) - SQUARE_X(end)) > 1) {
@@ -307,24 +347,34 @@ algebraic_notation_for(Board *board, Move move, char *str)
 		return;
 	}
 
-	bool capture = PIECE_AT_SQUARE(board, (move.end)) != EMPTY;
+	bool capture = PIECE_AT_SQUARE(board, END_SQUARE (move)) != EMPTY;
 
 	// Add the letter denoting the type of piece moving
 	if (type != PAWN)
 		str[i++] = "\0\0NBRQK"[type];
 
-	// Add the number/letter of the rank/file of the moving piece if necessary
-	Square ambig = ambiguous_piece(board, move);
-	// We always add the file if it's a pawn capture
-	if (ambig != NULL_SQUARE || (type == PAWN && capture)) {
-		char disambiguate;
-		if (SQUARE_X(ambig) == SQUARE_X(start))
-			disambiguate = RANK_CHAR(SQUARE_Y(start));
-		else
-			disambiguate = FILE_CHAR(SQUARE_X(start));
-
-		str[i++] = disambiguate;
+	gboolean multiples_ambiguous = has_multiples_ambiguous_piece_n (board, move);
+	if (multiples_ambiguous)
+	{
+		str[i++] = FILE_CHAR (SQUARE_FILE(start));
+		str[i++] = RANK_CHAR (SQUARE_RANK(start));
 	}
+	else
+	{
+		// Add the number/letter of the rank/file of the moving piece if necessary
+		Square ambig = ambiguous_piece(board, move);
+	// We always add the file if it's a pawn capture
+		if (ambig != NULL_SQUARE || (type == PAWN && capture)) {
+			char disambiguate;
+			if (SQUARE_X(ambig) == SQUARE_X(start))
+				disambiguate = RANK_CHAR(SQUARE_Y(start));
+			else
+				disambiguate = FILE_CHAR(SQUARE_X(start));
+
+			str[i++] = disambiguate;
+		}
+	}
+
 
 	// Add an 'x' if its a capture
 	if (capture)
@@ -340,7 +390,7 @@ algebraic_notation_for(Board *board, Move move, char *str)
 		if (SQUARE_Y(end) == 7 || SQUARE_Y(end) == 0)
 		{
 			str[i++] = '=';
-			str[i++] = "\0\0NBRQK"[move.promotion];
+			str[i++] = "\0\0NBRQK"[PROMOTION(move)];
 		}
 	}
 	//
@@ -355,33 +405,56 @@ algebraic_notation_for(Board *board, Move move, char *str)
 	str[i++] = '\0';
 }
 
-Move MOVE (Square start, Square end)
+void
+chess_print_move (Move m)
 {
-    Move move;
-    move.start = start;
-    move.end = end;
-    move.promotion = QUEEN;
-    return move;
+	Square start = START_SQUARE (m);
+	Square end = END_SQUARE (m);
+
+	gint file_start = SQUARE_FILE (start); 
+	gint rank_start = SQUARE_RANK (start); 
+	gint file_end = SQUARE_FILE (end); 
+	gint rank_end = SQUARE_RANK (end); 
+
+	PieceType promotion = PROMOTION (m);
+	gchar *promotion_str = promotion == QUEEN ? "QUEEN" :
+	                       promotion == ROOK ? "ROOK" :
+	                       promotion == BISHOP ? "BISHOP" :
+	                       promotion == KNIGHT ? "KNIGHT" : "INVALID";
+	                       
+
+	g_print ("Start: %c%c\n", file_start + 'a', rank_start + '1');
+	g_print ("End:   %c%c\n", file_end + 'a', rank_end + '1');
+	g_print ("Promotion: %s\n", promotion_str);
 }
 
-Move MOVE_WITH_PROMOTION (Square start, Square end, Piece_type promotion)
-{
-    Move move;
-    move.start = start;
-    move.end = end;
-    move.promotion = promotion;
-    return move;
-}
+//Move MOVE (Square start, Square end)
+//{
+//    Move move;
+//    move.start = start;
+//    move.end = end;
+//    move.promotion = QUEEN;
+//    return move;
+//}
 
-Move NULL_MOVE ()
-{
-    Move m;
-	m.end = NULL_SQUARE;
-	m.start = NULL_SQUARE;
-	return m;
-}
+//Move MOVE_WITH_PROMOTION (Square start, Square end, Piece_type promotion)
+//{
+//    Move move;
+//    move.start = start;
+//    move.end = end;
+//    move.promotion = promotion;
+//    return move;
+//}
 
-gboolean    eq_move (Move x, Move y)
-{
-    return x.start == y.start && x.end == y.end;
-}
+//Move NULL_MOVE ()
+//{
+//    Move m;
+//	m.end = NULL_SQUARE;
+//	m.start = NULL_SQUARE;
+//	return m;
+//}
+
+//gboolean    eq_move (Move x, Move y)
+//{
+//    return x.start == y.start && x.end == y.end;
+//}

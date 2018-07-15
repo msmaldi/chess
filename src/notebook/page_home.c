@@ -153,10 +153,12 @@ open_pgn_callback(GtkWidget *widget, gpointer data)
 		if (!success) {
 			// TODO: Display an error dialog
 			puts("Failed to read the PGN");
-			return;
 		}
+        else
+        {
+		    chessboard_set_game (chessboard, pgn.game);
+        }
 
-		chessboard_set_game (chessboard, pgn.game);
 
 		set_button_sensitivity();
 	}
@@ -216,7 +218,7 @@ paste_received (GtkClipboard *clipboard,
     gboolean is_success = board_from_fen (board, text, &error);
     if (is_success)
     {
-        g_print ("OK\n", text);
+        g_print ("OK\n");
         free_game(chessboard->game);
         chessboard->game = game_new ();
         copy_board (chessboard->game->board, board);

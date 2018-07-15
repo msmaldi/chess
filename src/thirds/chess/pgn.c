@@ -478,7 +478,7 @@ static Move parse_move(Board *board, char *notation)
 	}
 
 	size_t i = 0;
-	Piece_type type;
+	PieceType type;
 	// If it's a pawn move, the target square starts at the beginning of the
 	// string
 	if (islower(stripped[0])) {
@@ -494,26 +494,48 @@ static Move parse_move(Board *board, char *notation)
 	}
 	
 	char disambig = 0;
+	if (type == PAWN && j == 3)
+	{
+		disambig = stripped[i-1];
+	}
 	if (j == 4)
 	{		
 		// If it's this long, there must be a disambiguation char in there
 		disambig = stripped[i++];
 	}
+	// if j equals 5, we found ambiguous rank and file
+	if (j == 5)
+	{
+	    File start_file = CHAR_FILE (stripped[i++]);
+		Rank start_rank = CHAR_RANK (stripped[i++]);
+		Square start = SQUARE (start_file, start_rank);
 
+		File end_file = CHAR_FILE (stripped[i++]);
+		Rank end_rank = CHAR_RANK (stripped[i++]);
+
+		Square end = SQUARE (end_file, end_rank);
+
+		Move m = MOVE (start, end);
+					
+		if (legal_move(board, m, true))
+			return m;
+		else
+			return NULL_MOVE;
+	}
 	
 	uint target_file = CHAR_FILE(stripped[i++]);
 	uint target_rank = CHAR_RANK(stripped[i++]);
 
 	if (disambig != 0) {
 		uint x = 0, y = 0, dx = 0, dy = 0;
-		if (disambig >= 'a' && disambig <= 'g') {
+		if (disambig >= 'a' && disambig <= 'h') {
 			x = CHAR_FILE(disambig);
 			dy = 1;
 		} else if (disambig >= '1' && disambig <= '8') {
 			y = CHAR_RANK(disambig);
 			dx = 1;
 		} else {
-			return NULL_MOVE();
+			return NULL_MOVE;
 		}
 
 		for (; x < BOARD_SIZE && y < BOARD_SIZE; x += dx, y += dy) {
@@ -521,10 +543,8 @@ static Move parse_move(Board *board, char *notation)
 			if (PIECE_TYPE(p) != type || PLAYER(p) != board->turn)
 				continue;
 
-			//Move m// = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
-
 			bool has_promotion = false;
-			Piece_type promotion = QUEEN;
+			PieceType promotion = QUEEN;
 			
 			{
 				for (size_t i = 0; notation[i] != '\0'; i++)
@@ -542,26 +562,19 @@ static Move parse_move(Board *board, char *notation)
 						else if (notation[i] == 'B')
 							promotion = BISHOP;
 						else
-							return NULL_MOVE();
+							return NULL_MOVE;
 					}
 				}				
 			}
 
-			Move m;// = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
+			Move m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
 			if (has_promotion)
-				m = MOVE_WITH_PROMOTION (SQUARE(x, y), SQUARE(target_file, target_rank), promotion);
-			else
-				m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
-
-			//g_print ("%s %d %d %d %d %d\n", notation, x, y, target_file, target_rank, promotion);
-
-
+				m = MOVE_PROMOTE (m, promotion);
 
 			if (legal_move(board, m, true))
 				return m;
 		}
-
-		return NULL_MOVE();
+		return NULL_MOVE;
 	}
 
 	for (uint x = 0; x < BOARD_SIZE; x++) {
@@ -572,7 +585,7 @@ static Move parse_move(Board *board, char *notation)
 			
 
 			bool has_promotion = false;
-			Piece_type promotion = QUEEN;
+			PieceType promotion = QUEEN;
 			
 			{
 				for (size_t i = 0; notation[i] != '\0'; i++)
@@ -590,23 +603,23 @@ static Move parse_move(Board *board, char *notation)
 						else if (notation[i] == 'B')
 							promotion = BISHOP;
 						else 
-							return NULL_MOVE();
+							return NULL_MOVE;
 					}
 				}				
 			}
 
-			Move m;// = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
+			Move m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
 			if (has_promotion && PIECE_TYPE(p) == PAWN)
-				m = MOVE_WITH_PROMOTION (SQUARE(x, y), SQUARE(target_file, target_rank), promotion);
-			else
-				m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
+				m = MOVE_PROMOTE (m, promotion);
+			//else
+			//	m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
 			
 			if (legal_move(board, m, true))
 				return m;
 		}
 	}
 
-	return NULL_MOVE();
+	return NULL_MOVE;
 }
 
 static Result parse_game_termination_marker(Token *t)
@@ -751,7 +764,8 @@ static bool parse_tokens(PGN *pgn, GArray *tokens, GError **err)
 		}
 
 		Move m = parse_move(game->board, t->value.string);
-		if (( eq_move (m, NULL_MOVE()))) {
+		if (m == NULL_MOVE) 
+		{
 			g_set_error(err, 0, 0, "Expected a move, got %s", t->value.string);
 			
 			return false;

@@ -196,7 +196,6 @@ board_from_fen (Board *board, const gchar *fen_str, GError **error)
 			if (is_number_fen_rank (fen_str[index]))
 			{
 				gint empty_squares = fen_str[index] - '0';
-				//g_print ("\tFile: %c\t Rank: %d\t Empty: %d\n", file + 'a', rank + 1, empty_squares);	
 				if (file + empty_squares > 8)
 				{
 					g_set_error (error, 1, 1, 
@@ -216,8 +215,7 @@ board_from_fen (Board *board, const gchar *fen_str, GError **error)
 					g_set_error (error, 1, 1, 
 						"Rank %d length > 8", rank + 1);
 					return FALSE;
-				}	
-				//g_print ("\tFile: %c\t Rank: %d\t Piece: %c\n", file + 'a', rank + 1, fen_str[index]);	
+				}		
 				Piece piece = piece_from_char_n (fen_str[index]);
 				if (piece == PIECE(BLACK, KING))
 					b_king_count++;
@@ -606,7 +604,7 @@ gboolean checkmate(Board *board, Player p)
 		return false;
 
 	// Can we block?
-	Piece_type type = PIECE_TYPE(PIECE_AT_SQUARE(board, attacker));
+	PieceType type = PIECE_TYPE(PIECE_AT_SQUARE(board, attacker));
 	if (type != KNIGHT) {
 		int dx = SQUARE_X(attacker) - x;
 		int dy = SQUARE_Y(attacker) - y;
