@@ -98,7 +98,7 @@ typedef enum Token_type
 
 typedef union Token_value {
 	char *string;
-	uint integer;
+	guint integer;
 } Token_value;
 
 typedef struct Token
@@ -125,7 +125,7 @@ void print_token(Token *t)
 	}
 }
 
-static bool symbol_is_integer(Token *t)
+static gboolean symbol_is_integer(Token *t)
 {
 	char *str = t->value.string;
 	for (size_t i = 0; str[i] != '\0'; i++)
@@ -188,7 +188,7 @@ static GArray *tokenize_pgn(char *buf, gsize length)
 	int cs, act;
 	// act is initialized for scanners, so it must be declared, but in this
 	// scanner we don't actually use it. This silences the compiler warning.
-	IGNORE(act);
+	//IGNORE(act);
 
 	
 #line 195 "src/chess/pgn.c"
@@ -454,9 +454,14 @@ static Move parse_move(Board *board, char *notation)
 {
 	// First we remove 'x's, '+'s, and '#'s, as we don't need them and they only
 	// complicate parsing.
-	char stripped[6]; // max length without 'x#+'s, + 1 for null terminator
+	gchar stripped[6]; // max length without 'x#+'s, + 1 for null terminator
 	size_t j = 0;
+	gboolean is_checkmate = FALSE;
+	gboolean is_check = FALSE;
+
+
 	for (size_t i = 0; notation[i] != '\0'; i++)
+	{
 		if (notation[i] != 'x' && notation[i] != '#' && notation[i] != '+')
 		{
 			if (notation[i] == '=')
@@ -466,18 +471,22 @@ static Move parse_move(Board *board, char *notation)
 			}
 			stripped[j++] = notation[i];
 		}
+	}
+		
 	stripped[j] = '\0';
 
 	if (strcmp(notation, "O-O") == 0) {
-		uint y = board->turn == WHITE ? 0 : 7;
+		guint y = board->turn == WHITE ? 0 : 7;
 		return MOVE(SQUARE(4, y), SQUARE(6, y));
 	}
 	if (strcmp(notation, "O-O-O") == 0) {
-		uint y = board->turn == WHITE ? 0 : 7;
+		guint y = board->turn == WHITE ? 0 : 7;
 		return MOVE(SQUARE(4, y), SQUARE(2, y));
 	}
 
 	size_t i = 0;
+	char disambig = 0;
+
 	PieceType type;
 	// If it's a pawn move, the target square starts at the beginning of the
 	// string
@@ -486,18 +495,21 @@ static Move parse_move(Board *board, char *notation)
 
 		// An exception: if it's a move like exd5, the target square starts one 
 		// char further on
-		if (islower(stripped[1]))
-			i++;
+		//if (islower(stripped[1]))
+		//	i++;
+		if (j == 3)
+	 	{
+	 		disambig = stripped[i++];
+	 	}
 	} else {
 		type = PIECE_TYPE(piece_from_char(stripped[0]));
 		i++;
 	}
 	
-	char disambig = 0;
-	if (type == PAWN && j == 3)
-	{
-		disambig = stripped[i-1];
-	}
+	// if (type == PAWN && j == 3)
+	// {
+	// 	disambig = stripped[i-1];
+	// }
 	if (j == 4)
 	{		
 		// If it's this long, there must be a disambiguation char in there
@@ -517,17 +529,17 @@ static Move parse_move(Board *board, char *notation)
 
 		Move m = MOVE (start, end);
 					
-		if (legal_move(board, m, true))
+		if (legal_move(board, m, TRUE))
 			return m;
 		else
 			return NULL_MOVE;
 	}
 	
-	uint target_file = CHAR_FILE(stripped[i++]);
-	uint target_rank = CHAR_RANK(stripped[i++]);
+	guint target_file = CHAR_FILE(stripped[i++]);
+	guint target_rank = CHAR_RANK(stripped[i++]);
 
 	if (disambig != 0) {
-		uint x = 0, y = 0, dx = 0, dy = 0;
+		guint x = 0, y = 0, dx = 0, dy = 0;
 		if (disambig >= 'a' && disambig <= 'h') {
 			x = CHAR_FILE(disambig);
 			dy = 1;
@@ -543,7 +555,7 @@ static Move parse_move(Board *board, char *notation)
 			if (PIECE_TYPE(p) != type || PLAYER(p) != board->turn)
 				continue;
 
-			bool has_promotion = false;
+			gboolean has_promotion = false;
 			PieceType promotion = QUEEN;
 			
 			{
@@ -569,7 +581,7 @@ static Move parse_move(Board *board, char *notation)
 
 			Move m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
 			if (has_promotion)
-				m = MOVE_PROMOTE (m, promotion);
+				m = PROMOTE (m, promotion);
 
 			if (legal_move(board, m, true))
 				return m;
@@ -577,14 +589,14 @@ static Move parse_move(Board *board, char *notation)
 		return NULL_MOVE;
 	}
 
-	for (uint x = 0; x < BOARD_SIZE; x++) {
-		for (uint y = 0; y < BOARD_SIZE; y++) {
+	for (guint x = 0; x < BOARD_SIZE; x++) {
+		for (guint y = 0; y < BOARD_SIZE; y++) {
 			Piece p = PIECE_AT(board, x, y);
 			if (PIECE_TYPE(p) != type || PLAYER(p) != board->turn)
 				continue;
 			
 
-			bool has_promotion = false;
+			gboolean has_promotion = false;
 			PieceType promotion = QUEEN;
 			
 			{
@@ -610,9 +622,7 @@ static Move parse_move(Board *board, char *notation)
 
 			Move m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
 			if (has_promotion && PIECE_TYPE(p) == PAWN)
-				m = MOVE_PROMOTE (m, promotion);
-			//else
-			//	m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
+				m = PROMOTE (m, promotion);
 			
 			if (legal_move(board, m, true))
 				return m;
@@ -650,7 +660,7 @@ static char *game_termination_marker(Result r)
 	}
 }
 
-static bool parse_tokens(PGN *pgn, GArray *tokens, GError **err)
+static gboolean parse_tokens(PGN *pgn, GArray *tokens, GError **err)
 {
 	// Start with tags
 	pgn->tags = g_hash_table_new(g_str_hash, g_str_equal);
@@ -710,7 +720,7 @@ static bool parse_tokens(PGN *pgn, GArray *tokens, GError **err)
 	}
 
 	// Now the movetext section
-	uint half_move_number = 2;
+	guint half_move_number = 2;
 
 	Game *game = game_new ();
 	pgn->game = game;
@@ -791,11 +801,11 @@ static void free_tokens(GArray *tokens)
 }
 
 
-bool read_pgn(PGN *pgn, const char *input_filename, GError **error)
+gboolean read_pgn(PGN *pgn, const char *input_filename, GError **error)
 {
 	assert(*error == NULL);
 
-	bool ret = true;
+	gboolean ret = true;
 	char *buf;
 	gsize length;
 
@@ -810,11 +820,15 @@ bool read_pgn(PGN *pgn, const char *input_filename, GError **error)
 		goto cleanup;
 	}
 
-	GArray *tokens = tokenize_pgn(buf, length);
+	gchar* new_buf = g_str_to_ascii (buf, "C");
+	
+
+	GArray *tokens = tokenize_pgn(new_buf, length);
 	ret = parse_tokens(pgn, tokens, error);
 	free_tokens(tokens);
 
 cleanup:
+	g_free(new_buf);
 	g_free(buf);
 	g_object_unref(file);
 
@@ -826,7 +840,7 @@ static const char *seven_tag_roster[] =
 	"Event", "Site", "Date", "Round", "White", "Black", "Result"
 };
 
-static bool in_seven_tag_roster(char *tag_name)
+static gboolean in_seven_tag_roster(char *tag_name)
 {
 	size_t size = sizeof(seven_tag_roster) / sizeof(seven_tag_roster[0]);
 	for (size_t i = 0; i < size; i++)
@@ -877,7 +891,7 @@ static void process_tag(gpointer key, gpointer value, gpointer user_data)
 }
 
 // TODO: handle IO errors
-bool write_pgn(PGN *pgn, FILE *file)
+gboolean write_pgn(PGN *pgn, FILE *file)
 {
 	size_t size = sizeof(seven_tag_roster) / sizeof(seven_tag_roster[0]);
 	for (size_t i = 0; i < size; i++) {

@@ -24,5 +24,5 @@ typedef struct PGN
 	Game *game;
 } PGN;
 
-bool read_pgn(PGN *pgn, const char *input_filename, GError **error);
+gboolean read_pgn(PGN *pgn, const char *input_filename, GError **error);
 //bool write_pgn(PGN *pgn, FILE *file);

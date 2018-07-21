@@ -3,7 +3,7 @@
 #include "fen_box.h"
 #include <librsvg/rsvg.h>
 #include <string.h>
-#include "../thirds/chess/moves.h"
+#include "../chess/moves.h"
 
 RsvgHandle *piece_svgs[2][6];
 
@@ -11,7 +11,7 @@ RsvgHandle *piece_svgs[2][6];
 ChessBoard*
 chessboard_new (void)
 {
-    ChessBoard *result = g_new (ChessBoard, 1);
+    ChessBoard *result = g_new0 (ChessBoard, 1);
 
     result->game = game_new_startpos ();
     result->drag_source = NULL_SQUARE;
@@ -107,15 +107,15 @@ free_chessboard (ChessBoard *chessboard)
 void 
 chessboard_load_svgs(char *dir, GError **err)
 {
-	uint len = strlen(dir) + 8; // e.g.: "w_k.svg\0"
+	guint len = strlen(dir) + 8; // e.g.: "w_k.svg\0"
 	char str[len];
 	char piece_letters[] = "pnbrqk";
 	char side_letters[] = "bw";
 
-	for (uint i = 0; i < 2; i++) {
+	for (guint i = 0; i < 2; i++) {
 		char side = side_letters[i];
 
-		for (uint j = 0; piece_letters[j] != '\0'; j++) {
+		for (guint j = 0; piece_letters[j] != '\0'; j++) {
 			sprintf(str, "%s%c_%c.svg", dir, side, piece_letters[j]);
 
 			piece_svgs[i][j] = rsvg_handle_new_from_file(str, err);
@@ -171,16 +171,16 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 	// completely centered, so we pad by half the leftover space.
 	// We rely on the widget being perfectly square in these calculations, as
 	// this is enforced by its containing aspect frame.
-	uint square_size = get_square_size_n(widget);
-	uint leftover_space =
+	guint square_size = get_square_size_n(widget);
+	guint leftover_space =
 		gtk_widget_get_allocated_width(widget) - square_size * BOARD_SIZE;
-	uint padding = leftover_space / 2;
+	guint padding = leftover_space / 2;
 	cairo_translate(cr, padding, padding);
 
 	// Color light squares one-by-one
 	cairo_set_line_width(cr, 0);
-	for (uint file = 0; file < BOARD_SIZE; file++) {
-		uint x = chessboard->flipped ? BOARD_SIZE - file - 1 : file;
+	for (guint file = 0; file < BOARD_SIZE; file++) {
+		guint x = chessboard->flipped ? BOARD_SIZE - file - 1 : file;
 
 		for (int rank = BOARD_SIZE - 1; rank >= 0; rank--) {
 			int y = chessboard->flipped ? BOARD_SIZE - rank - 1 : rank;
@@ -238,11 +238,11 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 
 
 static Square 
-chessboard_coords_to_square(GtkWidget *drawing_area, uint x, uint y, gboolean flipped)
+chessboard_coords_to_square(GtkWidget *drawing_area, guint x, guint y, gboolean flipped)
 {
-	uint square_size = get_square_size_n(drawing_area);
-	uint board_x = x / square_size;
-	uint board_y = y / square_size;
+	guint square_size = get_square_size_n(drawing_area);
+	guint board_x = x / square_size;
+	guint board_y = y / square_size;
 	if (!flipped) {
 		board_y = BOARD_SIZE - 1 - board_y;
 	} else {
@@ -317,10 +317,11 @@ chessboard_mouse_up_callback (GtkWidget *widget,
 	
 
 	//
+
 	
 	Move m = MOVE(chessboard->drag_source, drag_target);
-	m = MOVE_PROMOTE (m, QUEEN);
-	if (legal_move(chessboard->game->board, m, true)) {
+	//m = PROMOTE (m, QUEEN);
+	if (legal_move(chessboard->game->board, m, TRUE)) {
 		char notation[MAX_ALGEBRAIC_NOTATION_LENGTH];
 		algebraic_notation_for(chessboard->game->board, m, notation);
 

@@ -2,7 +2,7 @@
 #include "notebook.h"
 #include "../engine/uci_engine.h"
 #include "../application/application.h"
-#include "../thirds/chess/pgn.h"
+#include "../chess/pgn.h"
 
 void set_button_sensitivity ();
 void open_pgn_callback (GtkWidget *widget, gpointer data);
@@ -146,7 +146,7 @@ open_pgn_callback(GtkWidget *widget, gpointer data)
 		char *filename = gtk_file_chooser_get_filename(chooser);
 		PGN pgn;
 		GError *error = NULL;
-		bool success = read_pgn(&pgn, filename, &error);
+		gboolean success = chess_read_pgn (&pgn, filename, &error);
 
 		g_free(filename);
 

@@ -2,8 +2,8 @@
 #define CHESSBOARD_H
 
 #include <gtk/gtk.h>
-#include "../thirds/chess/game.h"
-#include "../thirds/chess/board.h"
+#include "../chess/game.h"
+#include "../chess/board.h"
 
 #define DEFAULT_SQUARE_SIZE 50
 

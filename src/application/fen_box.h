@@ -3,7 +3,7 @@
 
 #include <gtk/gtk.h>
 #include "../notebook/notebook.h"
-#include "../thirds/chess/board.h"
+#include "../chess/board.h"
 
 extern  GtkWidget    *fen_box;
 extern  GtkWidget    *fen_input;

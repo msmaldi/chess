@@ -1,7 +1,7 @@
 #include "application.h"
-#include "../thirds/chess/board.h"
-#include "../thirds/chess/game.h"
-#include "../thirds/chess/pgn.h"
+#include "../chess/board.h"
+#include "../chess/game.h"
+#include "../chess/pgn.h"
 #include "../notebook/page_home.h"
 
 ChessBoard *chessboard;
