@@ -1,5 +1,5 @@
-#include "../src/thirds/chess/moves.h"
-#include "../src/thirds/chess/board.h"
+#include "../src/chess/moves.h"
+#include "../src/chess/board.h"
 #include <glib.h>
 
 
@@ -10,7 +10,7 @@ main (void)
     Square e4 = SQUARE (FILE_E, RANK_4);
 
     Move m = MOVE (e2, e4);
-    //chess_print_move (m);
+    chess_print_move (m);
 
     Square expected_e2 = START_SQUARE (m);
     Square expected_e4 = END_SQUARE (m);
@@ -21,15 +21,21 @@ main (void)
 
     g_assert (queen == QUEEN);
 
-    m = MOVE_PROMOTE (m, BISHOP);
+    m = PROMOTE (m, BISHOP);
+    chess_print_move (m);
+
     PieceType bishop = PROMOTION (m);
     g_assert (bishop == BISHOP);
 
-    m = MOVE_PROMOTE (m, KNIGHT);
+    m = PROMOTE (m, KNIGHT);
+    chess_print_move (m);
+
     PieceType knight = PROMOTION (m);
     g_assert (knight == KNIGHT);
 
-    m = MOVE_PROMOTE (m, ROOK);
+    m = PROMOTE (m, ROOK);
+    chess_print_move (m);
+    
     PieceType rook = PROMOTION (m);
     g_assert (rook == ROOK);
 

@@ -313,16 +313,23 @@ chessboard_mouse_up_callback (GtkWidget *widget,
 	Square drag_target = 
 		chessboard_coords_to_square(widget, e->x, e->y, chessboard->flipped);
 
-	// open widget to request a piecie to promote
-	
+	Piece piece = PIECE_AT_SQUARE (chessboard->game->board, chessboard->drag_source);
 
-	//
-
+	// open widget to request a piece to promote
+	if (piece == BLACK_PAWN && SQUARE_RANK (drag_target) == RANK_1)
+	{
+		g_print ("Promoting Black Pawn\n");
+	}
+	else if (piece == WHITE_PAWN && SQUARE_RANK (drag_target) == RANK_8)
+	{
+		g_print ("Promoting White Pawn\n");
+	}
 	
 	Move m = MOVE(chessboard->drag_source, drag_target);
-	//m = PROMOTE (m, QUEEN);
-	if (legal_move(chessboard->game->board, m, TRUE)) {
-		char notation[MAX_ALGEBRAIC_NOTATION_LENGTH];
+
+	if (legal_move(chessboard->game->board, m, TRUE)) 
+	{
+		gchar notation[MAX_ALGEBRAIC_NOTATION_LENGTH];
 		algebraic_notation_for(chessboard->game->board, m, notation);
 
 		// TODO: Stop printing this when we have a proper move list GUI

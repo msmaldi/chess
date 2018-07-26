@@ -117,5 +117,6 @@ free_game (Game *game)
 		free_game (game->sibling);
 	if (game->children != NULL)
 		free_game (game->children);
+
 	g_free (game);
 }

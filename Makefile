@@ -52,6 +52,8 @@ pgn.o: src/chess/pgn.c
 pgn_robust.o: src/chess/pgn_robust.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
+libchess.a: board.o game.o moves.o pgn.o
+	ar rcs $@ $^
 
 test: test_board test_moves test_pgn
 	./test_board && ./test_moves && ./test_pgn
@@ -80,5 +82,14 @@ test_pgn_robust: test_pgn_robust.o pgn_robust.o board.o moves.o game.o
 test_pgn_robust.o: test/pgn_robust_test.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
+play: playground
+	./playground
+
+playground: playground.o libchess.a
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+
+playground.o: test/playground.c
+	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
+
 clean:
-	rm -f chess test_* *.o
+	rm -f chess playground test_* *.o *.a

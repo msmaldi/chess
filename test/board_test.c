@@ -1,4 +1,6 @@
-#include "../src/thirds/chess/board.h"
+
+#include "../src/chess/chessconfig.h"
+#include "../src/chess/board.h"
 
 gchar *list_of_fen_valid[] =
 {
@@ -94,36 +96,44 @@ gchar *list_of_fen_valid[] =
     "8/1N3pk1/1q2n1p1/2pQ3p/4P2P/2P3P1/5PK1/8 b - - 0 45",
     "8/1N3pk1/4n1p1/2pQ3p/4P2P/2P3P1/1q3PK1/8 w - - 1 46",
     "8/5pk1/4n1p1/2NQ3p/4P2P/2P3P1/1q3PK1/8 b - - 0 46",
+
+    "rnbqkbnr/pppppppp/pppppppp/pppppppp/PPPPPPPP/PPPPPPPP/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+
+#if FEN_CASTLING_ORDERED == FALSE
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w kqKQ - 0 1",
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w QK - 0 1",
+#endif
+
     NULL
 };
 
 gchar *list_of_fen_invalid[] =
 {
     "---------1---------2---------3---------4---------5---------6---------7---------8---------9---------0",
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR/ w KQkq - 0 1",  // 8 slashs
-    "5k5/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",        // 11 piecies on rank 8
-    "rnbqkbnr/pppppppp/8/8/8/8/5P5/RNBQKBNR w KQkq - 0 1",        // 11 piecies on rank 2
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/4K5 w KQkq - 0 1",        // 10 piecies on rank 1
-    "rnbqkbnrp/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  // 9 piecies on rank 8
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNRP w KQkq - 0 1",  // 9 piecies on rank 1
-    "knbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",   // Found 2 Black King
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNK w KQkq - 0 1",   // Found 2 White King
-    "rnbqrbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",   // No Found Black King
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQRBNR w KQkq - 0 1",   // No Found White King
-    "rnaqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",   // Invalid character a on board
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNAQKBNR w KQkq - 0 1",   // Invalid character A on board
-    "rnbqkbnr/pppppppp/0/8/8/8/PPPPPPPP/RNAQKBNR w KQkq - 0 1",   // Invalid character 0 on board
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR a KQkq - 0 1",   // invalid player a on active
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR wKQkq - 0 1",    // Needed whitespace after active
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq- - 0 1",  // Needed whitespace after castling
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQaq - 0 1",   // Castling KQkq
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR/ w KQkq - 0 1",     // 8 slashs
+    "5k5/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",           // 11 piecies on rank 8
+    "rnbqkbnr/pppppppp/8/8/8/8/5P5/RNBQKBNR w KQkq - 0 1",           // 11 piecies on rank 2
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/4K5 w KQkq - 0 1",           // 10 piecies on rank 1
+    "rnbqkbnrp/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",     // 9 piecies on rank 8
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNRP w KQkq - 0 1",     // 9 piecies on rank 1
+    "knbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",      // Found 2 Black King
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNK w KQkq - 0 1",      // Found 2 White King
+    "rnbqrbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",      // No Found Black King
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQRBNR w KQkq - 0 1",      // No Found White King
+    "rnaqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",      // Invalid character a on board
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNAQKBNR w KQkq - 0 1",      // Invalid character A on board
+    "rnbqkbnr/pppppppp/0/8/8/8/PPPPPPPP/RNAQKBNR w KQkq - 0 1",      // Invalid character 0 on board
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR a KQkq - 0 1",      // invalid player a on active
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR wKQkq - 0 1",       // Needed whitespace after active
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq- - 0 1",     // Needed whitespace after castling
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQaq - 0 1",      // Castling KQkq
 
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -- 0 1",   // Needed whitespace after en passant
-    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3- 0 1",// Needed whitespace after en passant
-    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq 03 0 1", // Expected [a-h]
-    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq i3 0 1", // Expected [a-h]
-    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e4 0 1", // Expected 3 or 6
-    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e7 0 1", // Expected 3 or 6
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -- 0 1",     // Needed whitespace after en passant
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3- 0 1",  // Needed whitespace after en passant
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq 03 0 1",   // Expected [a-h]
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq i3 0 1",   // Expected [a-h]
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e4 0 1",   // Expected 3 or 6
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e7 0 1",   // Expected 3 or 6
 
     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e6 0 1",   // En Passant Black on rank 6
     "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e3 0 2", // En Passant White on rank 3
@@ -131,13 +141,18 @@ gchar *list_of_fen_invalid[] =
     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPPPPPP/RNBQKBNR b KQkq e3 0 1",   // Pawn moves 2, but exist piece
     "rnbqkbnr/pppppppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2", // Pawn moves 2, but exist piece
 
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 123 1",    //
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - 1",      //
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 123 1",    // Half move clock > 99
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - 1",      // Half move clock != [0-99]
 
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 10000",  //
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 ab",     //
-    "8/5pk1/4n1p1/2NQ3p/4P2P/2P3P1/1q3PK1/8 b - - 0 46 ",            //
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 10000",  // Moves > 9999
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 ab",     // Moves != [0-9999]
+    "8/5pk1/4n1p1/2NQ3p/4P2P/2P3P1/1q3PK1/8 b - - 0 46 ",            // Last character != '\0'
     
+#if FEN_CASTLING_ORDERED == TRUE
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w kqKQ - 0 1",
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w QK - 0 1",
+#endif
+
     NULL
 };
 
@@ -151,7 +166,7 @@ main (void)
     for (gint i = 0; (fen = list_of_fen_valid[i]) != NULL; i++)
     {
         GError *error = NULL;
-        Board *board = g_new (Board, 1);
+        Board *board = board_new ();
         gboolean sucess = board_from_fen (board, fen, &error);
         if (!sucess)
         {
@@ -170,7 +185,7 @@ main (void)
     for (gint i = 0; (fen = list_of_fen_invalid[i]) != NULL; i++)
     {
         GError *error = NULL;
-        Board *board = g_new (Board, 1);
+        Board *board = board_new ();
         if (error != NULL)
             error = NULL;
         gboolean success = board_from_fen (board, fen, &error);
@@ -191,7 +206,7 @@ main (void)
     for (gint i = 0; (fen = list_of_fen_valid[i]) != NULL; i++)
     {
         GError *error = NULL;
-        Board *board = g_new (Board, 1);
+        Board *board = board_new ();
         board_from_fen (board, fen, &error);
 
         gchar *fen_clone = g_new0 (gchar, 90);

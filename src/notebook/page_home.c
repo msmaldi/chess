@@ -143,7 +143,7 @@ open_pgn_callback(GtkWidget *widget, gpointer data)
 
 	int result = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (result == GTK_RESPONSE_ACCEPT) {
-		char *filename = gtk_file_chooser_get_filename(chooser);
+		gchar *filename = gtk_file_chooser_get_filename(chooser);
 		PGN pgn;
 		GError *error = NULL;
 		gboolean success = chess_read_pgn (&pgn, filename, &error);

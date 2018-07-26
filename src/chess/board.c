@@ -1,3 +1,4 @@
+#include "chessconfig.h"
 #include "board.h"
 #include "moves.h"
 
@@ -17,8 +18,8 @@ void
 copy_board (Board *dst, Board *src)
 {
 	dst->turn = src->turn;
-	dst->castling[0] = src->castling[0];
-	dst->castling[1] = src->castling[1];
+	dst->castling[BLACK] = src->castling[BLACK];
+	dst->castling[WHITE] = src->castling[WHITE];
 	dst->en_passant = src->en_passant;
 	dst->half_move_clock = src->half_move_clock;
 	dst->move_number = src->move_number;
@@ -44,7 +45,7 @@ char_from_piece (Piece p)
 	}
 }
 
-gchar *start_board_fen =
+const gchar *start_board_fen =
 	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 gint to_fen (Board *board, gchar *fen)
@@ -52,7 +53,7 @@ gint to_fen (Board *board, gchar *fen)
 	gchar *active = (board->turn == BLACK ? "b" : "w");
 
 	gchar castling[5] = { '-', '\0', '\0', '\0', '\0' };
-	int c = 0;
+	guint c = 0;
 	if (board->castling[WHITE].kingside)
 		castling[c++] = 'K';
 	if (board->castling[WHITE].queenside)
@@ -73,13 +74,16 @@ gint to_fen (Board *board, gchar *fen)
 
 	gchar board_fen[64 + 8 + 1];
 	int board_fen_index = 0;
-	for (int i = 56; i >=0; i -= 8)
+	for (Rank rank = RANK_8; rank >= RANK_1; rank--)
+	//for (int i = 56; i >= 0; i -= 8)
 	{
 		int no_piece = 0;
-		for (int aux = 0; aux < 8; aux++)
+		for (File file = FILE_A; file <= FILE_H; file++)
+		//for (int aux = 0; aux < 8; aux++)
 		{	
-			int index = i + aux;
-			Piece piece = board->pieces[index];
+			//int index = i + aux;
+			Piece piece = PIECE_AT (board, file, rank);
+			//Piece piece = board->pieces[index];
 			gchar ca = char_from_piece (piece);
 			gchar ch = PLAYER (piece) == BLACK ? g_ascii_tolower (ca) : ca;
 
@@ -116,7 +120,6 @@ gint to_fen (Board *board, gchar *fen)
 // Initializes a Board given a string containing Forsyth-Edwards Notation (FEN)
 // See <http://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation> for a
 // description, and <http://kirill-kryukov.com/chess/doc/fen.html> for the spec
-// TODO: this is way too fucking long
 /*
 ---------1---------2---------3---------4---------5---------6---------7---------8---------9---------0
 rnbqkbnr/pppppppp/pppppppp/pppppppp/PPPPPPPP/PPPPPPPP/PPPPPPPP/RNBQKBNR w KQkq e3 40 1100
@@ -186,9 +189,9 @@ board_from_fen (Board *board, const gchar *fen_str, GError **error)
 	gint index = 0;
 	gint w_king_count = 0;
 	gint b_king_count = 0;
-	for (int rank = RANK_8; rank >= RANK_1; rank--)
+	for (Rank rank = RANK_8; rank >= RANK_1; rank--)
 	{
-		gint file = 0;
+		File file = FILE_A;
 		while (fen_str[index] != '/' && fen_str[index] != ' ')
 		{
 			if (is_number_fen_rank (fen_str[index]))
@@ -208,16 +211,16 @@ board_from_fen (Board *board, const gchar *fen_str, GError **error)
 			}
 			else if (is_piece (fen_str[index]))
 			{
-				if (file + 1 > 8)
+				if (file >= BOARD_SIZE)
 				{
 					g_set_error (error, 1, 1, 
 						"Rank %d length > 8", rank + 1);
 					return FALSE;
 				}		
 				Piece piece = piece_from_char (fen_str[index]);
-				if (piece == PIECE(BLACK, KING))
+				if (piece == BLACK_KING)
 					b_king_count++;
-				if (piece == PIECE(WHITE, KING))
+				else if (piece == WHITE_KING)
 					w_king_count++;
 
 				PIECE_AT (board, file, rank) = piece;
@@ -282,125 +285,127 @@ board_from_fen (Board *board, const gchar *fen_str, GError **error)
 			casling_str[i] = fen_str[index++];
 	}
 	//g_print ("%s'%c'\n", casling_str, fen_str[index]);
-	// if (g_ascii_strcasecmp (casling_str, "KQkq") == 0)
-	// {
-	// 	w_castling.kingside = TRUE;
-	// 	w_castling.queenside = TRUE;
-	// 	b_castling.kingside = TRUE;
-	// 	b_castling.queenside = TRUE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "KQk") == 0)
-	// {
-	// 	w_castling.kingside = TRUE;
-	// 	w_castling.queenside = TRUE;
-	// 	b_castling.kingside = TRUE;
-	// 	b_castling.queenside = FALSE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "KQq") == 0)
-	// {
-	// 	w_castling.kingside = TRUE;
-	// 	w_castling.queenside = TRUE;
-	// 	b_castling.kingside = FALSE;
-	// 	b_castling.queenside = TRUE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "Kkq") == 0)
-	// {
-	// 	w_castling.kingside = TRUE;
-	// 	w_castling.queenside = FALSE;
-	// 	b_castling.kingside = TRUE;
-	// 	b_castling.queenside = TRUE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "Qkq") == 0)
-	// {
-	// 	w_castling.kingside = FALSE;
-	// 	w_castling.queenside = TRUE;
-	// 	b_castling.kingside = TRUE;
-	// 	b_castling.queenside = TRUE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "KQ") == 0)
-	// {
-	// 	w_castling.kingside = TRUE;
-	// 	w_castling.queenside = TRUE;
-	// 	b_castling.kingside = FALSE;
-	// 	b_castling.queenside = FALSE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "Kk") == 0)
-	// {
-	// 	w_castling.kingside = TRUE;
-	// 	w_castling.queenside = FALSE;
-	// 	b_castling.kingside = TRUE;
-	// 	b_castling.queenside = FALSE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "Kq") == 0)
-	// {
-	// 	w_castling.kingside = TRUE;
-	// 	w_castling.queenside = FALSE;
-	// 	b_castling.kingside = FALSE;
-	// 	b_castling.queenside = TRUE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "Qk") == 0)
-	// {
-	// 	w_castling.kingside = FALSE;
-	// 	w_castling.queenside = TRUE;
-	// 	b_castling.kingside = TRUE;
-	// 	b_castling.queenside = FALSE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "Qq") == 0)
-	// {
-	// 	w_castling.kingside = FALSE;
-	// 	w_castling.queenside = TRUE;
-	// 	b_castling.kingside = FALSE;
-	// 	b_castling.queenside = TRUE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "kq") == 0)
-	// {
-	// 	w_castling.kingside = FALSE;
-	// 	w_castling.queenside = FALSE;
-	// 	b_castling.kingside = TRUE;
-	// 	b_castling.queenside = TRUE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "K") == 0)
-	// {
-	// 	w_castling.kingside = TRUE;
-	// 	w_castling.queenside = FALSE;
-	// 	b_castling.kingside = FALSE;
-	// 	b_castling.queenside = FALSE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "Q") == 0)
-	// {
-	// 	w_castling.kingside = FALSE;
-	// 	w_castling.queenside = TRUE;
-	// 	b_castling.kingside = FALSE;
-	// 	b_castling.queenside = FALSE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "k") == 0)
-	// {
-	// 	w_castling.kingside = FALSE;
-	// 	w_castling.queenside = FALSE;
-	// 	b_castling.kingside = TRUE;
-	// 	b_castling.queenside = FALSE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "q") == 0)
-	// {
-	// 	w_castling.kingside = FALSE;
-	// 	w_castling.queenside = FALSE;
-	// 	b_castling.kingside = FALSE;
-	// 	b_castling.queenside = TRUE;
-	// }
-	// else if (g_ascii_strcasecmp (casling_str, "-") == 0)
-	// {
-	// 	w_castling.kingside = FALSE;
-	// 	w_castling.queenside = FALSE;
-	// 	b_castling.kingside = FALSE;
-	// 	b_castling.queenside = FALSE;
-	// }
-	// else
-	// {
-	// 	g_set_error (error, 1, 1, 
-	// 		"Found expected - or KQkq");
-	// 		return FALSE;
-	// }
 
+#if FEN_CASTLING_ORDERED == TRUE
+	if (g_strcmp0 (casling_str, "KQkq") == 0)
+	{
+		w_castling.kingside = TRUE;
+		w_castling.queenside = TRUE;
+		b_castling.kingside = TRUE;
+		b_castling.queenside = TRUE;
+	}
+	else if (g_strcmp0 (casling_str, "KQk") == 0)
+	{
+		w_castling.kingside = TRUE;
+		w_castling.queenside = TRUE;
+		b_castling.kingside = TRUE;
+		b_castling.queenside = FALSE;
+	}
+	else if (g_strcmp0 (casling_str, "KQq") == 0)
+	{
+		w_castling.kingside = TRUE;
+		w_castling.queenside = TRUE;
+		b_castling.kingside = FALSE;
+		b_castling.queenside = TRUE;
+	}
+	else if (g_strcmp0 (casling_str, "Kkq") == 0)
+	{
+		w_castling.kingside = TRUE;
+		w_castling.queenside = FALSE;
+		b_castling.kingside = TRUE;
+		b_castling.queenside = TRUE;
+	}
+	else if (g_strcmp0 (casling_str, "Qkq") == 0)
+	{
+		w_castling.kingside = FALSE;
+		w_castling.queenside = TRUE;
+		b_castling.kingside = TRUE;
+		b_castling.queenside = TRUE;
+	}
+	else if (g_strcmp0 (casling_str, "KQ") == 0)
+	{
+		w_castling.kingside = TRUE;
+		w_castling.queenside = TRUE;
+		b_castling.kingside = FALSE;
+		b_castling.queenside = FALSE;
+	}
+	else if (g_strcmp0 (casling_str, "Kk") == 0)
+	{
+		w_castling.kingside = TRUE;
+		w_castling.queenside = FALSE;
+		b_castling.kingside = TRUE;
+		b_castling.queenside = FALSE;
+	}
+	else if (g_strcmp0 (casling_str, "Kq") == 0)
+	{
+		w_castling.kingside = TRUE;
+		w_castling.queenside = FALSE;
+		b_castling.kingside = FALSE;
+		b_castling.queenside = TRUE;
+	}
+	else if (g_strcmp0 (casling_str, "Qk") == 0)
+	{
+		w_castling.kingside = FALSE;
+		w_castling.queenside = TRUE;
+		b_castling.kingside = TRUE;
+		b_castling.queenside = FALSE;
+	}
+	else if (g_strcmp0 (casling_str, "Qq") == 0)
+	{
+		w_castling.kingside = FALSE;
+		w_castling.queenside = TRUE;
+		b_castling.kingside = FALSE;
+		b_castling.queenside = TRUE;
+	}
+	else if (g_strcmp0 (casling_str, "kq") == 0)
+	{
+		w_castling.kingside = FALSE;
+		w_castling.queenside = FALSE;
+		b_castling.kingside = TRUE;
+		b_castling.queenside = TRUE;
+	}
+	else if (g_strcmp0 (casling_str, "K") == 0)
+	{
+		w_castling.kingside = TRUE;
+		w_castling.queenside = FALSE;
+		b_castling.kingside = FALSE;
+		b_castling.queenside = FALSE;
+	}
+	else if (g_strcmp0 (casling_str, "Q") == 0)
+	{
+		w_castling.kingside = FALSE;
+		w_castling.queenside = TRUE;
+		b_castling.kingside = FALSE;
+		b_castling.queenside = FALSE;
+	}
+	else if (g_strcmp0 (casling_str, "k") == 0)
+	{
+		w_castling.kingside = FALSE;
+		w_castling.queenside = FALSE;
+		b_castling.kingside = TRUE;
+		b_castling.queenside = FALSE;
+	}
+	else if (g_strcmp0 (casling_str, "q") == 0)
+	{
+		w_castling.kingside = FALSE;
+		w_castling.queenside = FALSE;
+		b_castling.kingside = FALSE;
+		b_castling.queenside = TRUE;
+	}
+	else if (g_strcmp0 (casling_str, "-") == 0)
+	{
+		w_castling.kingside = FALSE;
+		w_castling.queenside = FALSE;
+		b_castling.kingside = FALSE;
+		b_castling.queenside = FALSE;
+	}
+	else
+	{
+		g_set_error (error, 1, 1, 
+			"Found expected - or \"KQkq\" must be ordered.");
+			return FALSE;
+	}
+#else
 	for(gint i = 0; i < 4; i++)
 	{
 		if (casling_str[i] == '-' || casling_str[i] == '\0')
@@ -421,6 +426,8 @@ board_from_fen (Board *board, const gchar *fen_str, GError **error)
 			return FALSE;
 		}
 	}
+#endif
+
 	board->castling[BLACK] = b_castling;
 	board->castling[WHITE] = w_castling;
 
@@ -708,10 +715,10 @@ checkmate(Board *board, Player p)
 	if (!in_check(board, p))
 		return FALSE;
 
-	Square king_location = find_king(board, p);
-	Player other = OTHER_PLAYER(p);
-	File x = SQUARE_X(king_location);
-	Rank y = SQUARE_Y(king_location);
+	Square king_location = find_king (board, p);
+	Player other = OTHER_PLAYER (p);
+	File x = SQUARE_X (king_location);
+	Rank y = SQUARE_Y (king_location);
 
 	// Can the king move out of check?
 	for (int dx = -1; dx < 2; dx++) {

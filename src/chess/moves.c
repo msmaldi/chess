@@ -111,37 +111,11 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	Player oponent = OTHER_PLAYER (player);
 
 	Square player_king = find_king (board, player);
-	Square other_player_king = find_king (board, oponent);
 
-	if (player_king == NULL_SQUARE) //|| other_player_king == NULL_SQUARE)
+	if (player_king == NULL_SQUARE)
 	{
 	 	return FALSE;
 	}
-
-	// Check if after perform move is under attack
-	// {
-	// 	Board *board_clone = board_new ();
-	// 	copy_board (board_clone, board);
-	// 	perform_move (board_clone, move);
-
-	// 	print_board (board_clone);
-
-	// 	Player current_player = board_clone->turn;
-	// 	Player opponent_player = OTHER_PLAYER (current_player);
-
-	// 	Square opponent_king_location = find_king (board_clone, opponent_player);
-
-	// 	if (under_attack (board_clone, opponent_king_location, current_player))
-	// 	{
-	// 		return FALSE;
-	// 	}
-
-	// }
-
-	// if (under_attack (board, player_king, oponent))
-	// {
-	// 	return FALSE;
-	// }
 
 	// Can't move a piece that isn't there
 	if (p == EMPTY)
@@ -369,37 +343,45 @@ algebraic_notation_for (Board *board, Move move, gchar *str)
 	Square end = END_SQUARE (move);
 	Piece p = PIECE_AT_SQUARE(board, start);
 	PieceType type = PIECE_TYPE(p);
-
+	Player other_player = OTHER_PLAYER (PLAYER (p));
+	
 	// Castling
 	if (type == KING && ABS ((SQUARE_X(start) - SQUARE_X(end))) > 1) 
 	{
+
 		if (SQUARE_X(end) == 6)
 		{	
-			if (gives_mate (board, move, OTHER_PLAYER (PLAYER (p))))
+			if (gives_mate (board, move, other_player))
 				g_strlcpy (str, "O-O#", MAX_ALGEBRAIC_NOTATION_LENGTH);
-			else if (gives_check (board, move, OTHER_PLAYER (PLAYER (p))))
+			else if (gives_check (board, move, other_player))
 				g_strlcpy (str, "O-O+", MAX_ALGEBRAIC_NOTATION_LENGTH);
 			else
 				g_strlcpy (str, "O-O", MAX_ALGEBRAIC_NOTATION_LENGTH);
 		}
 		else
 		{
-			if (gives_mate (board, move, OTHER_PLAYER (PLAYER (p))))
+			if (gives_mate (board, move, other_player))
 				g_strlcpy (str, "O-O-O#", MAX_ALGEBRAIC_NOTATION_LENGTH);
-			else if (gives_check (board, move, OTHER_PLAYER (PLAYER (p))))
+			else if (gives_check (board, move, other_player))
 				g_strlcpy (str, "O-O-O+", MAX_ALGEBRAIC_NOTATION_LENGTH);
 			else
 				g_strlcpy (str, "O-O-O", MAX_ALGEBRAIC_NOTATION_LENGTH);
 		}
-
 		return;
 	}
 
 	gboolean capture = PIECE_AT_SQUARE(board, END_SQUARE (move)) != EMPTY;
 
-	// Add the letter denoting the type of piece moving
-	if (type != PAWN)
+	if (type == PAWN)
+	{
+		// en_passant capture
+		capture = (capture || (end == board->en_passant));
+	}
+	else
+	{
+		// Add the letter denoting the type of piece moving
 		str[i++] = "\0\0NBRQK"[type];
+	}
 
 	gboolean multiples_ambiguous = has_multiples_ambiguous_piece_n (board, move);
 	if (multiples_ambiguous)
@@ -411,7 +393,7 @@ algebraic_notation_for (Board *board, Move move, gchar *str)
 	{
 		// Add the number/letter of the rank/file of the moving piece if necessary
 		Square ambig = ambiguous_piece(board, move);
-	// We always add the file if it's a pawn capture
+		// We always add the file if it's a pawn capture
 		if (ambig != NULL_SQUARE || (type == PAWN && capture)) {
 			gchar disambiguate;
 			if (SQUARE_X(ambig) == SQUARE_X(start))
@@ -443,10 +425,10 @@ algebraic_notation_for (Board *board, Move move, gchar *str)
 	}
 
 	// Add a '#' if its mate
-	if (gives_mate(board, move, OTHER_PLAYER(PLAYER(p))))
+	if (gives_mate(board, move, other_player))
 		str[i++] = '#';
 	// Add a '+' if its check
-	else if (gives_check(board, move, OTHER_PLAYER(PLAYER(p))))
+	else if (gives_check(board, move, other_player))
 		str[i++] = '+';
 
 	str[i++] = '\0';
@@ -467,8 +449,7 @@ chess_print_move (Move m)
 	gchar *promotion_str = promotion == QUEEN ? "QUEEN" :
 	                       promotion == ROOK ? "ROOK" :
 	                       promotion == BISHOP ? "BISHOP" :
-	                       promotion == KNIGHT ? "KNIGHT" : "INVALID";
-	                       
+	                       promotion == KNIGHT ? "KNIGHT" : "INVALID";	                       
 
 	g_print ("Start: %c%c\n", file_start + 'a', rank_start + '1');
 	g_print ("End:   %c%c\n", file_end + 'a', rank_end + '1');

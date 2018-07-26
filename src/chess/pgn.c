@@ -392,14 +392,28 @@ parse_move (Board *board, gchar *notation)
     // max length without 'x#+'s, + 1 for null terminator
 	gchar stripped[6] = { '\0', '\0', '\0', '\0', '\0', '\0'};
 	size_t stripped_len = 0;
-	//gboolean is_checkmate = FALSE;
-	//gboolean is_check = FALSE;
+
+    gboolean has_promotion = FALSE;
+    PieceType promotion = QUEEN;
 
 	for (size_t i = 0; notation[i] != '\0'; i++)
 	{
         if (notation[i] == '=')
         {
             i++;
+            has_promotion = TRUE;
+
+            if (notation[i] == 'Q')
+                promotion = QUEEN;
+            else if (notation[i] == 'R')
+                promotion = ROOK;
+            else if (notation[i] == 'N')
+                promotion = KNIGHT;
+            else if (notation[i] == 'B')
+                promotion = BISHOP;
+            else
+                NULL_MOVE;
+
             continue;
         }
 		if (notation[i] != 'x' && notation[i] != '#' && notation[i] != '+' && 
@@ -410,22 +424,16 @@ parse_move (Board *board, gchar *notation)
 	}
 	stripped[stripped_len] = '\0';
 
-    // If first character of notation is O is a castling Move
-    // Checking this we gain performance
-    if (*stripped == 'O')
+    if (g_ascii_strcasecmp (stripped, "O-O") == 0) 
     {
-        if (g_ascii_strcasecmp(stripped, "O-O") == 0) 
-        {
-            guint y = board->turn == WHITE ? 0 : 7;
-            return MOVE(SQUARE(4, y), SQUARE(6, y));
-        }
-        if (g_ascii_strcasecmp(stripped, "O-O-O") == 0) 
-        {
-            guint y = board->turn == WHITE ? 0 : 7;
-            return MOVE(SQUARE(4, y), SQUARE(2, y));
-        }
+        guint y = board->turn == WHITE ? 0 : 7;
+        return MOVE(SQUARE(4, y), SQUARE(6, y));
     }
-		
+    if (g_ascii_strcasecmp (stripped, "O-O-O") == 0) 
+    {
+        guint y = board->turn == WHITE ? 0 : 7;
+        return MOVE(SQUARE(4, y), SQUARE(2, y));
+    }
 
 	size_t i = 0;
 	gchar disambig = 0;
@@ -442,6 +450,9 @@ parse_move (Board *board, gchar *notation)
         // e.g exd5 after stripped ed5
 		if (stripped_len == 3)
 	 		disambig = stripped[i++];
+            // TODO: Here we can get imediate move, is just get, the desambig 
+            // and add +1 for RANK if pawn is black and -1 is White
+        
 	} 
     else 
     {
@@ -449,14 +460,14 @@ parse_move (Board *board, gchar *notation)
         // 'R'ook, k'N'ight, 'B'ishop, 'Q'ueen, 'K'ing
 		type = PIECE_TYPE (piece_from_char (stripped[i++]));
 	}
-	
+
+	// If it's this long, there must be a disambiguation char in there	
 	if (stripped_len == 4)
 	{		
-		// If it's this long, there must be a disambiguation char in there
 		disambig = stripped[i++];
 	}
 	// if stripped_len equals 5, we found ambiguous rank and file
-	if (stripped_len == 5)
+	else if (stripped_len == 5)
 	{
 	    File start_file = CHAR_FILE (stripped[i++]);
 		Rank start_rank = CHAR_RANK (stripped[i++]);
@@ -478,7 +489,8 @@ parse_move (Board *board, gchar *notation)
 	guint target_file = CHAR_FILE(stripped[i++]);
 	guint target_rank = CHAR_RANK(stripped[i++]);
 
-	if (disambig != 0) {
+	if (disambig != 0) 
+    {
 		guint x = 0, y = 0, dx = 0, dy = 0;
 		if (disambig >= 'a' && disambig <= 'h') {
 			x = CHAR_FILE(disambig);
@@ -494,30 +506,6 @@ parse_move (Board *board, gchar *notation)
 			Piece p = PIECE_AT(board, x, y);
 			if (PIECE_TYPE(p) != type || PLAYER(p) != board->turn)
 				continue;
-
-			gboolean has_promotion = FALSE;
-			PieceType promotion = QUEEN;
-			
-			{
-				for (size_t i = 0; notation[i] != '\0'; i++)
-				{
-					if (notation[i] == '=')
-					{
-						has_promotion = TRUE;
-						i++;
-						if (notation[i] == 'Q')
-							promotion = QUEEN;
-						else if (notation[i] == 'R')
-							promotion = ROOK;
-						else if (notation[i] == 'N')
-							promotion = KNIGHT;
-						else if (notation[i] == 'B')
-							promotion = BISHOP;
-						else
-							return NULL_MOVE;
-					}
-				}				
-			}
 
 			Move m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
 			if (has_promotion)
@@ -535,33 +523,8 @@ parse_move (Board *board, gchar *notation)
 			if (PIECE_TYPE(p) != type || PLAYER(p) != board->turn)
 				continue;
 			
-
-			gboolean has_promotion = FALSE;
-			PieceType promotion = QUEEN;
-			
-			{
-				for (size_t i = 0; notation[i] != '\0'; i++)
-				{
-					if (notation[i] == '=')
-					{
-						has_promotion = TRUE;
-						i++;
-						if (notation[i] == 'Q')
-							promotion = QUEEN;
-						else if (notation[i] == 'R')
-							promotion = ROOK;
-						else if (notation[i] == 'N')
-							promotion = KNIGHT;
-						else if (notation[i] == 'B')
-							promotion = BISHOP;
-						else 
-							return NULL_MOVE;
-					}
-				}				
-			}
-
 			Move m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
-			if (has_promotion && PIECE_TYPE(p) == PAWN)
+			if (has_promotion)
 				m = PROMOTE (m, promotion);
 			
 			if (legal_move(board, m, TRUE))

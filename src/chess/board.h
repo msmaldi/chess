@@ -1,14 +1,15 @@
 #ifndef BOARD_H
 #define BOARD_H
 
+#include "chessconfig.h"
 #include <stdint.h>
 #include <glib.h>
 
 #define BOARD_SIZE 8
 #define PLAYERS 2
 
-typedef uint_fast8_t File;
-typedef uint_fast8_t Rank;
+typedef int_fast8_t File;
+typedef int_fast8_t Rank;
 
 #define RANK_8 7
 #define RANK_7 6
@@ -28,14 +29,18 @@ typedef uint_fast8_t Rank;
 #define FILE_G 6
 #define FILE_H 7
 
-typedef int_fast16_t Square;
-#define SQUARE(file, rank)  (((file) << 8) | (rank))
-#define SQUARE_X(square)    ((square) >> 8)
-#define SQUARE_Y(square)    ((square) & 0xF)
-#define SQUARE_FILE(square) ((square) >> 8)
-#define SQUARE_RANK(square) ((square) & 0xF)
+// Files and Ranks can be stored in 3 bit, and square can use 8 bits
+// to store a file and rank, but in my tests use 16 bits for store
+// gain a little performance.
+typedef uint_fast16_t Square;
+#define SQUARE(file, rank)  ((Square)(((file) << 8) | (rank)))
+#define SQUARE_X(square)    ((File)((square) >> 8))
+#define SQUARE_Y(square)    ((Rank)((square) & 0xF))
+#define SQUARE_FILE(square) ((File)((square) >> 8))
+#define SQUARE_RANK(square) ((Rank)((square) & 0xF))
 
 #define NULL_SQUARE ((Square)(~((Square)0)))
+
 
 // Pieces are represented as shorts, with the MSB used to store the color, and
 // the rest equal to one of a bunch of constants for the type of piece.
@@ -140,8 +145,10 @@ gboolean 	can_castle_kingside		(Board *board, Player p);
 gboolean 	can_castle_queenside	(Board *board, Player p);
 
 Square		find_king				(Board *board, Player p);
-gboolean    under_attack			(Board *board, Square square, Player attacker);
+gboolean    under_attack			(Board *board, 
+                                     Square square, 
+                                     Player attacker);
 
-extern gchar *start_board_fen;
+extern const gchar *start_board_fen;
 
 #endif
