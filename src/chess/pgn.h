@@ -23,12 +23,23 @@ typedef struct _PGN_Tag
 
 typedef struct _PGN
 {
+    gchar event[256];
+    gchar site[256];
+    gchar date[256];
+    gchar round[256];
+    gchar white[256];
+    gchar black[256];
     EndGame result;
+    
+    gboolean has_fen;
     gchar fen[90];
-    Game *game;
+    Move *move_list;
 } PGN;
 
 
 gboolean   chess_read_pgn    (PGN *pgn, const gchar *filename, GError **error);
+Game      *pgn_to_game       (const PGN *pgn);
+
+void       pgn_free          (PGN *pgn);
 
 #endif

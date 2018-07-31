@@ -31,6 +31,27 @@ game_new_prepared (Move move, Board *board, Game *parent)
 }
 
 Game*
+game_new_fen (const gchar *fen)
+{
+	Game *game = game_new ();
+	GError *error = NULL;
+	gboolean success = board_from_fen (game->board, fen, &error);
+	if (!success)
+	{
+		g_error_free (error);
+		free_game (game);
+		return NULL;
+	}
+
+	game->move     = NULL_MOVE;
+	game->parent   = NULL;
+	game->children = NULL;
+	game->sibling  = NULL;
+
+	return game;
+}
+
+Game*
 game_new_startpos (void)
 {
 	Game *game = game_new ();

@@ -8,17 +8,18 @@ perform_move (Board *board, Move move)
 {
 	Square start = START_SQUARE (move);
 	Square end = END_SQUARE (move);
-	Piece p = PIECE_AT_SQUARE(board, start);
-	PieceType type = PIECE_TYPE(p);
+	Piece p = PIECE_AT_SQUARE (board, start);
+	PieceType type = PIECE_TYPE (p);
+	Player player = PLAYER (p);
 
 	board->half_move_clock++;
-	if (PLAYER(p) == BLACK)
+	if (player == BLACK)
 		board->move_number++;
 
 	// Check if we're capturing en passant
 	if (type == PAWN && end == board->en_passant)
 	{
-		Rank en_pasanter_rank = PLAYER(p) == WHITE ? 4 : 3;
+		Rank en_pasanter_rank = player == WHITE ? 4 : 3;
 		PIECE_AT(board, SQUARE_X(end), en_pasanter_rank) = EMPTY;
 	}
 
@@ -26,7 +27,7 @@ perform_move (Board *board, Move move)
 	gint dy = SQUARE_Y(end) - SQUARE_Y(start);
 	if (type == PAWN && ABS(dy) == 2)
 	{
-		Rank en_passant_rank = PLAYER(p) == WHITE ? RANK_3 : RANK_6;
+		Rank en_passant_rank = player == WHITE ? RANK_3 : RANK_6;
 		board->en_passant = SQUARE(SQUARE_X(start), en_passant_rank);
 	} 
 	else 
@@ -39,21 +40,21 @@ perform_move (Board *board, Move move)
 	gint dx = SQUARE_X(end) - SQUARE_X(start);
 	if (type == KING && ABS(dx) > 1) 
 	{
-		guint y = PLAYER(p) == WHITE ? 0 : BOARD_SIZE - 1;
+		guint y = player == WHITE ? 0 : BOARD_SIZE - 1;
 		gboolean kingside = SQUARE_X(end) == 6;
 		if (kingside) 
 		{
 			PIECE_AT(board, 7, y) = EMPTY;
-			PIECE_AT(board, 5, y) = PIECE(PLAYER(p), ROOK);
+			PIECE_AT(board, 5, y) = PIECE(player, ROOK);
 		} else 
 		{
 			PIECE_AT(board, 0, y) = EMPTY;
-			PIECE_AT(board, 3, y) = PIECE(PLAYER(p), ROOK);
+			PIECE_AT(board, 3, y) = PIECE(player, ROOK);
 		}
 	}
 
 	// Check if we're depriving ourself of castling rights
-	Castling *c = &board->castling[PLAYER(p)];
+	Castling *c = &board->castling[player];
 	if (type == KING) 
 	{
 		c->kingside = FALSE;
@@ -61,13 +62,30 @@ perform_move (Board *board, Move move)
 	} 
 	else if (type == ROOK) 
 	{
-		if (SQUARE_X(start) == BOARD_SIZE - 1) 
+		if (SQUARE_X(start) == FILE_H) 
 		{
 			c->kingside = FALSE;
 		} 
-		else if (SQUARE_X(start) == 0) 
+		else if (SQUARE_X(start) == FILE_A) 
 		{
 			c->queenside = FALSE;
+		}
+	}
+	else
+	{
+		if (player == WHITE)
+		{
+			if (end == SQUARE(FILE_A, RANK_8))
+				board->castling[BLACK].queenside = FALSE;
+			else if (end == SQUARE(FILE_H, RANK_8))
+				board->castling[BLACK].kingside = FALSE;
+		}
+		else 
+		{
+			if (end == SQUARE(FILE_A, RANK_1))
+				board->castling[WHITE].queenside = FALSE;
+			else if (end == SQUARE(FILE_H, RANK_1))
+				board->castling[WHITE].kingside = FALSE;
 		}
 	}
 
@@ -108,29 +126,21 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	Piece at_end_square = PIECE_AT_SQUARE(board, end);
 
 	Player player = PLAYER (p);
-	Player oponent = OTHER_PLAYER (player);
-
-	Square player_king = find_king (board, player);
-
-	if (player_king == NULL_SQUARE)
-	{
-	 	return FALSE;
-	}
 
 	// Can't move a piece that isn't there
-	if (p == EMPTY)
+	if (type == EMPTY)
 	{
 		return FALSE;
 	}
 
 	// Can only move if it's your turn
-	if (PLAYER(p) != board->turn)
+	if (player != board->turn)
 	{
 		return FALSE;
 	}
 
 	// Can't capture your own pieces
-	if (at_end_square != EMPTY && PLAYER(at_end_square) == PLAYER(p))
+	if (at_end_square != EMPTY && PLAYER(at_end_square) == player)
 	{
 		return FALSE;
 	}
@@ -165,32 +175,48 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	gboolean legal_movement = FALSE;
 	switch (type) {
 	case PAWN:
-
-		if ((PLAYER(p) == WHITE && SQUARE_Y(start) == 1) ||
-			(PLAYER(p) == BLACK && SQUARE_Y(start) == 6)) {
+		if ((player == WHITE && SQUARE_Y(start) == 1) ||
+			(player == BLACK && SQUARE_Y(start) == 6)) 
+		{
 			if (ay != 1 && ay != 2) 
 			{
 				legal_movement = FALSE;
 				break;
 			}
-		} else if (ay != 1) {
+		} 
+		else if (ay != 1) 
+		{
 			legal_movement = FALSE;
 			break;
 		}
 
-		if (y_direction != (PLAYER(p) == WHITE ? 1 : -1)) {
+		if (y_direction != (player == WHITE ? 1 : -1))
+		{
 			legal_movement = FALSE;
 			break;
 		}
 
-		if (dx == 0) {
+		gint end_y = SQUARE_Y (end);
+		if (end_y == 7 || end_y == 0)
+		{
+			PieceType promotion = PROMOTION (move);
+			if (!IS_PROMOTABLE (promotion))
+			{
+				legal_movement = FALSE;
+				break;			
+			}
+		}
+
+		if (dx == 0)
+		{
 			legal_movement = at_end_square == EMPTY;
 			break;
 		}
 
-		if (dx == 1 || dx == -1) {
+		if (dx == 1 || dx == -1)
+		{
 			legal_movement = (ay == 1 && at_end_square != EMPTY &&
-					PLAYER(at_end_square) != PLAYER(p)) ||
+					PLAYER(at_end_square) != player) ||
 					end == board->en_passant;
 			break;
 		}
@@ -204,24 +230,29 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	case ROOK:   legal_movement = dx == 0 || dy == 0; break;
 	case QUEEN:  legal_movement = ax == ay || dx == 0 || dy == 0; break;
 	case KING:
-		if (ax <= 1 && ay <= 1) {
+		if (ax <= 1 && ay <= 1)
+		{
 			legal_movement = TRUE;
 			break;
 		}
-
-		if (SQUARE_Y(end) != (PLAYER(p) == WHITE ? 0 : BOARD_SIZE - 1)) {
+		if (SQUARE_Y(end) != (player == WHITE ? 0 : BOARD_SIZE - 1))
+		{
 			legal_movement = FALSE;
 			break;
 		}
 
-		if (SQUARE_X(end) == 6) {
-			
-			legal_movement = can_castle_kingside(board, PLAYER(p));
+		if (SQUARE_X(end) == 6)
+		{			
+			legal_movement = can_castle_kingside(board, player);
 			break;
-		} else if (SQUARE_X(end) == 2) {
-			legal_movement = can_castle_queenside(board, PLAYER(p));
+		} 
+		else if (SQUARE_X(end) == 2)
+		{
+			legal_movement = can_castle_queenside(board, player);
 			break;
-		} else {
+		}
+		else
+		{
 			legal_movement = FALSE;
 			break;
 		}
@@ -231,29 +262,33 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	if (!legal_movement)
 		return FALSE;
 
-
-	if (type == PAWN)
-	{
-		gint end_y = SQUARE_Y (end);
-		if (end_y == 7 || end_y == 0)
-		{
-			PieceType promotion = PROMOTION (move);
-			if (IS_PROMOTABLE (promotion))
-			{
-				legal_movement = TRUE;				
-			}
-			else
-			{
-				legal_movement = FALSE;
-			}
-		}
-	}
+	// if (type == PAWN)
+	// {
+	// 	gint end_y = SQUARE_Y (end);
+	// 	if (end_y == 7 || end_y == 0)
+	// 	{
+	// 		PieceType promotion = PROMOTION (move);
+	// 		if (IS_PROMOTABLE (promotion))
+	// 		{
+	// 			legal_movement = TRUE;				
+	// 		}
+	// 		else
+	// 		{
+	// 			legal_movement = FALSE;
+	// 		}
+	// 	}
+	// }
 
 	// At this point everything looks fine. The only thing left to check is
 	// whether the move puts us in check. We've checked enough of the move
 	// that perform_move should be able to handle it.
 	if (check_for_check)
-		return !gives_check(board, move, PLAYER(p));
+	{
+		// Square player_king = find_king (board, player);
+		// if (player_king == NULL_SQUARE)
+		// 	return FALSE;
+		return !gives_check(board, move, player);
+	}
 	else
 		return legal_movement;
 }

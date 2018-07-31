@@ -1,5 +1,6 @@
-CC=cc
+CC=gcc
 LIBS=`pkg-config --libs gtk+-3.0 librsvg-2.0`
+GLIB_LIBS=`pkg-config --libs glib-2.0 gio-2.0`
 CFLAGS=-O3 -std=c99 -s
 
 CFLAGS_GLIB=`pkg-config --cflags glib-2.0`
@@ -59,25 +60,25 @@ test: test_board test_moves test_pgn
 	./test_board && ./test_moves && ./test_pgn
 
 test_board: test_board.o board.o moves.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $^ -o $@ $(GLIB_LIBS)
 
 test_board.o: test/board_test.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
 test_moves: test_moves.o board.o moves.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $^ -o $@ $(GLIB_LIBS)
 
 test_moves.o: test/moves_test.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
 test_pgn: test_pgn.o pgn.o board.o moves.o game.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $^ -o $@ $(GLIB_LIBS)
 
 test_pgn.o: test/pgn_test.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 
 test_pgn_robust: test_pgn_robust.o pgn_robust.o board.o moves.o game.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $^ -o $@ $(GLIB_LIBS)
 
 test_pgn_robust.o: test/pgn_robust_test.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
@@ -86,7 +87,7 @@ play: playground
 	./playground
 
 playground: playground.o libchess.a
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $^ -o $@ $(GLIB_LIBS)
 
 playground.o: test/playground.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)

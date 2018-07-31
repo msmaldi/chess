@@ -22,6 +22,7 @@ typedef struct _Game
 Game		*game_new			(void);
 Game		*game_new_prepared	(Move move, Board *board, Game *parent);
 Game		*game_new_startpos	(void);
+Game        *game_new_fen       (const gchar *fen);
 
 Game 		*add_child			(Game *game, Move move);
 Game 		*first_child		(Game *game);

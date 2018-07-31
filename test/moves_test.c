@@ -39,5 +39,7 @@ main (void)
     PieceType rook = PROMOTION (m);
     g_assert (rook == ROOK);
 
+    g_print ("Moves OK\n\n\n");
+
     return 0;
 }

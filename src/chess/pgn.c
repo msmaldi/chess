@@ -31,7 +31,10 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
 	gchar *buffer;
 	gsize length;
 
+    Move move_buffer[10000];
+    gint move_index = 0;
 
+    Board board;
 
 	// We just load the whole file into memory.
 	// PGN files are typically very short: even the longest game in tournament
@@ -51,7 +54,7 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
     gint tag_index = 0;
     guint skip = 0;
 
-    gboolean has_fen = FALSE;
+    pgn->has_fen = FALSE;
     gboolean has_tag = TRUE;
     gchar c;
     while ((c = buffer[index++]) != '1' && c != '\0')
@@ -78,7 +81,7 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
                         }
                     }
                     pgn->fen[i] = '\0';  
-                    has_fen = TRUE;            
+                    pgn->has_fen = TRUE;            
                 }
             }
 
@@ -89,23 +92,25 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
         }
     }
     --index;
-
-    Game *game;
-    if (has_fen)
+    //Game *game;
+    if (pgn->has_fen)
     {
-        game = game_new ();
-        gboolean success = board_from_fen (game->board, pgn->fen, error);
+        //game = game_new ();
+        //gboolean success = board_from_fen (game->board, pgn->fen, error);
+        
+        gboolean success = board_from_fen (&board, pgn->fen, error);
         if (!success)
         {
-            g_print ("Fen: \"%s\" is Invalid!\n", pgn->fen);
+            // g_print ("Fen: \"%s\" is Invalid!\n", pgn->fen);
             goto cleanup;
         }
     }
     else
-    {
-        game = game_new_startpos ();
+    {        
+        //game = game_new_startpos ();
+        board_from_fen (&board, start_board_fen, error);
     }
-    pgn->game = game;
+    //pgn->game = game;
 
     remove_comment (&buffer[index]);
     remove_comment_parents (&buffer[index]);
@@ -130,7 +135,8 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
 
         //print_board (game->board);
         //g_print ("white move: %s\n", white_move);
-        move = parse_move (game->board, white_move);
+        //move = parse_move (game->board, white_move);
+        move = parse_move (&board, white_move);
         if (move == NULL_MOVE)
         {
             g_set_error (error, 1, 1, 
@@ -138,8 +144,9 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
             
             goto cleanup;
         }
-        game = add_child (game, move);
-
+        //game = add_child (game, move);
+        perform_move (&board, move);
+        move_buffer[move_index++] = move;
         
         index += skip;
         skip = skip_space_or_newline (&buffer[index], error);
@@ -160,14 +167,17 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
         gchar black_move[MAX_ALGEBRAIC_NOTATION_LENGTH];
         skip = copy_move (&buffer[index], black_move, error);
         
-        move = parse_move (game->board, black_move);
+        //move = parse_move (game->board, black_move);
+        move = parse_move (&board, black_move);
         if (move == NULL_MOVE)
         {
             g_set_error (error, 1, 1, 
 	 		    "Black Move: %d... %s is invalid!\n", move_number, black_move);
             goto cleanup;
         }
-        game = add_child (game, move);
+        //game = add_child (game, move);   
+        perform_move (&board, move);
+        move_buffer[move_index++] = move;     
 
         index += skip;
         skip = skip_space_or_newline (&buffer[index], error);
@@ -186,9 +196,13 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
 
 
 cleanup:
+    move_buffer[move_index++] = NULL_MOVE;
+    pgn->move_list = g_memdup (move_buffer, sizeof(Move) * move_index);
+    //g_new0 (Move, move_index);
+    //g_memmove (pgn->move_list, move_buffer, sizeof(Move) * move_index);
+
     g_free(buffer);
 	g_object_unref(file);
-
 
     if (*error != NULL)
         return FALSE;
@@ -196,10 +210,37 @@ cleanup:
     return result;
 }
 
+Game*
+pgn_to_game (const PGN *pgn)
+{
+    Game *game;
+    if (pgn->has_fen)
+        game = game_new_fen (pgn->fen);
+    else
+        game = game_new_startpos ();
+
+    Move *move_ptr = pgn->move_list;
+    Move move = NULL_MOVE;
+    Game *g = game;
+    while ((move = *move_ptr++) != NULL_MOVE)
+        g = add_child (g, move);
+
+    return game;
+}
+
+void
+pgn_free (PGN *pgn)
+{
+    if (pgn == NULL)
+        return;
+    g_free (pgn->move_list);
+    g_free (pgn);    
+}
+
 static gboolean 
 read_tags (PGN *pgn, const gchar *buffer, GError **error)
 {
-
+    return TRUE;
 }
 
 static guint 

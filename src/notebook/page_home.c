@@ -144,9 +144,9 @@ open_pgn_callback(GtkWidget *widget, gpointer data)
 	int result = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (result == GTK_RESPONSE_ACCEPT) {
 		gchar *filename = gtk_file_chooser_get_filename(chooser);
-		PGN pgn;
+		PGN *pgn = g_new0 (PGN, 1);
 		GError *error = NULL;
-		gboolean success = chess_read_pgn (&pgn, filename, &error);
+		gboolean success = chess_read_pgn (pgn, filename, &error);
 
 		g_free(filename);
 
@@ -156,9 +156,10 @@ open_pgn_callback(GtkWidget *widget, gpointer data)
 		}
         else
         {
-		    chessboard_set_game (chessboard, pgn.game);
+            
+		    chessboard_set_game (chessboard, pgn_to_game(pgn));
         }
-
+        pgn_free (pgn);
 
 		set_button_sensitivity();
 	}

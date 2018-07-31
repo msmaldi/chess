@@ -48,7 +48,8 @@ char_from_piece (Piece p)
 const gchar *start_board_fen =
 	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-gint to_fen (Board *board, gchar *fen)
+gint
+to_fen (Board *board, gchar *fen)
 {
 	gchar *active = (board->turn == BLACK ? "b" : "w");
 
@@ -603,20 +604,24 @@ board_from_fen (Board *board, const gchar *fen_str, GError **error)
 void
 print_board(Board *board)
 {
-	g_print ("..........");
+	g_print ("\n    a   b   c   d   e   f   g   h\n");
+	g_print ("  +---+---+---+---+---+---+---+---+\n");
 	for (int y = BOARD_SIZE - 1; y >= 0; y--) {
-		g_print(".");
+		g_print(" %d|", y + 1);
 		for (guint x = 0; x < BOARD_SIZE; x++) 
 		{
 			Piece p = PIECE_AT(board, x, y);
 			gchar c = char_from_piece(p);
-			g_print("%c", PLAYER(p) == BLACK ? g_ascii_tolower (c) : c);
-		}
+			g_print(" %c |", PLAYER(p) == BLACK ? g_ascii_tolower (c) : c);
 
-		g_print(".");
+		}
+		g_print("%d\n", y + 1);
+		g_print ("  +---+---+---+---+---+---+---+---+\n");
 	}
-	g_print("..........");
-	g_print("%s to move\n", board->turn == WHITE ? "White" : "Black");
+	g_print ("    a   b   c   d   e   f   g   h\n\n");
+	gchar fen[90];
+	to_fen (board, fen);
+	g_print ("FEN: %s\n\n", fen);
 }
 
 static Square
@@ -638,12 +643,12 @@ find_piece_looking_at(Board *board, Square square, Player piece_owner)
 
 	Square ret = NULL_SQUARE;
 
-	for (guint y = 0; y < BOARD_SIZE; y++) 
+	for (Rank rank = RANK_1; rank <= RANK_8; rank++) 
 	{
-		for (guint x = 0; x < BOARD_SIZE; x++) 
+		for (File file = FILE_A; file <= FILE_H; file++)
 		{
-			Piece p = PIECE_AT(board, x, y);
-			Square s = SQUARE(x, y);
+			Piece p = PIECE_AT(board, file, rank);
+			Square s = SQUARE(file, rank);
 			Move m = MOVE(s, square);
 
 			if (PLAYER(p) == piece_owner &&
@@ -687,10 +692,10 @@ find_king(Board *board, Player p)
 {
 	Piece king = PIECE(p, KING);
 
-	for (guint y = 0; y < BOARD_SIZE; y++)
-		for (guint x = 0; x < BOARD_SIZE; x++)
-			if (PIECE_AT(board, x, y) == king)
-				return SQUARE(x, y);
+	for (Rank rank = RANK_1; rank <= RANK_8; rank++)
+		for (File file = FILE_A; file <= FILE_H; file++)
+			if (PIECE_AT(board, file, rank) == king)
+				return SQUARE(file, rank);
 
 	//print_board (board);
 
@@ -701,8 +706,8 @@ gboolean
 in_check(Board *board, Player p)
 {
 	Square king_location = find_king (board, p);
-	g_assert (king_location != NULL_SQUARE); // both players should have a king
-	return under_attack (board, king_location, OTHER_PLAYER(p));
+	//g_assert (king_location != NULL_SQUARE); // both players should have a king
+	return king_location == NULL_SQUARE || under_attack (board, king_location, OTHER_PLAYER(p));
 }
 
 // This could be more simply written as "number of legal moves = 0", if the

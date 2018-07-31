@@ -1,55 +1,70 @@
 #include <glib.h>
 #include <gio/gio.h>
+#include <sys/sysinfo.h>
 #include "../src/chess/pgn.h"
 
+static gchar *data_dir = "/home/msmaldi/Projects/dotnet/ChessBaseDownloader/pgn";
+static GDir *dir;
 
+typedef struct
+{
+    gchar full_path[1024];
+    const gchar *filename;
+    PGN *pgn;
+    GError *error;
+} PgnTestData;
+
+gpointer
+do_work (gpointer data)
+{
+    PgnTestData *pgn_data_test = (PgnTestData*)data;
+    pgn_data_test->error = NULL;
+
+    while ((pgn_data_test->filename = g_dir_read_name (dir)))
+    {
+        pgn_data_test->pgn = g_new0 (PGN, 1);
+        g_snprintf (pgn_data_test->full_path, 1024, "%s/%s", data_dir, pgn_data_test->filename);
+
+        gboolean success = chess_read_pgn (pgn_data_test->pgn, pgn_data_test->full_path, &pgn_data_test->error);
+
+        if (!success)
+        {
+            g_printerr ("%s\n", pgn_data_test->full_path);
+            g_printerr ("%s\n", pgn_data_test->error->message);
+
+            pgn_data_test->error = NULL;
+        }
+
+        pgn_free (pgn_data_test->pgn);
+    }
+    return NULL;
+}
 
 int 
 main(int argc, char const *argv[])
 {   
-    PGN *pgn = g_new0 (PGN, 1);
-
-
-    // gchar *filename = "./horowitz_reshevsky_1936_id_1145208.pgn";
-
-    // GError *error = NULL;
-    // gboolean success = chess_read_pgn (pgn, filename, &error);
-    // if (success)
-    //     g_print ("OK\n");
-    // else
-    //     g_printerr ("%s", error->message);
-
-
-    GDir *dir;
     GError *error;
-    const gchar *filename;
-    gchar full_path[1024];
+    gint nproc = get_nprocs ();
 
-    gchar *data_dir = "/home/msmaldi/Projects/dotnet/ChessBaseDownloader/pgn"; //"./data/pgn";//
-    dir = g_dir_open(data_dir, 0, &error);
-    int count = 1;
-    while ((filename = g_dir_read_name(dir)))
+    dir = g_dir_open (data_dir, 0, &error);
+    g_print ("Found Threads: %d\nPGN Directory: %s\n", nproc, data_dir);
+
+    PgnTestData *data[nproc];
+    GThread *thread[nproc];
+
+    for(gint i = 0; i < nproc; i++)
     {
-        error = NULL;
-        g_snprintf (full_path, 1024, "%s/%s", data_dir, filename);
-        
-        //PGN pgn;
-        //g_print ("OK %7d -> %s\n", count++ ,full_path);
-        gboolean success = chess_read_pgn (pgn, full_path, &error);
-        if (success)
-        {
-            //g_print (".");
-        }
-        else
-        {
-            g_printerr ("%u %s\n", count++, full_path);
-            g_printerr ("%s\n", error->message);
-        }        
-        free_game (pgn->game);
+        data[i] =  g_new0 (PgnTestData, 1); 
+        thread[i] =  g_thread_new (NULL, do_work, data[i]);
     }
-    g_free (pgn);
-    //g_print ("\n");
+    for(gint i = 0; i < nproc; i++)
+    {
+        g_thread_join (thread[i]);
+        g_free (data[i]);
+    }
 
+    g_dir_close (dir);
+        
     return 0;
 }
 

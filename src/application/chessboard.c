@@ -243,9 +243,12 @@ chessboard_coords_to_square(GtkWidget *drawing_area, guint x, guint y, gboolean 
 	guint square_size = get_square_size_n(drawing_area);
 	guint board_x = x / square_size;
 	guint board_y = y / square_size;
-	if (!flipped) {
+	if (!flipped) 
+	{
 		board_y = BOARD_SIZE - 1 - board_y;
-	} else {
+	} 
+	else
+	{
 		board_x = BOARD_SIZE - 1 - board_x;
 	}
 
