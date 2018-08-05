@@ -41,14 +41,19 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
 	// history is only about 3.5KB.
 	// If someone tries to load a 2GB PGN and complains about it crashing, they
 	// need to take a long, hard look at themself.
-	GFile *file = g_file_new_for_path(filename);
-	if (!g_file_load_contents(file, NULL, &buffer, &length, NULL, error)) 
-    {
-		result = FALSE;
-        g_print ("Problem to read\n");
-		goto cleanup;
-	}
+	//GFile *file = g_file_new_for_path(filename);
+	//if (!g_file_load_contents(file, NULL, &buffer, &length, NULL, error)) 
+    //{
+	//	result = FALSE;
+    //    g_print ("Problem to read\n");
+    //		goto cleanup;
+	//}
 
+    if (!g_file_get_contents (filename, &buffer, &length, error))
+    {   
+        result = FALSE;
+        goto cleanup;
+    }
 
     guint index = 0;
     gint tag_index = 0;
@@ -202,7 +207,7 @@ cleanup:
     //g_memmove (pgn->move_list, move_buffer, sizeof(Move) * move_index);
 
     g_free(buffer);
-	g_object_unref(file);
+	//g_object_unref(file);
 
     if (*error != NULL)
         return FALSE;
@@ -465,12 +470,12 @@ parse_move (Board *board, gchar *notation)
 	}
 	stripped[stripped_len] = '\0';
 
-    if (g_ascii_strcasecmp (stripped, "O-O") == 0) 
+    if (g_strcmp0 (stripped, "O-O") == 0) 
     {
         guint y = board->turn == WHITE ? 0 : 7;
         return MOVE(SQUARE(4, y), SQUARE(6, y));
     }
-    if (g_ascii_strcasecmp (stripped, "O-O-O") == 0) 
+    if (g_strcmp0 (stripped, "O-O-O") == 0) 
     {
         guint y = board->turn == WHITE ? 0 : 7;
         return MOVE(SQUARE(4, y), SQUARE(2, y));
@@ -558,8 +563,8 @@ parse_move (Board *board, gchar *notation)
 		return NULL_MOVE;
 	}
 
-	for (guint x = 0; x < BOARD_SIZE; x++) {
-		for (guint y = 0; y < BOARD_SIZE; y++) {
+	for (File x = 0; x < BOARD_SIZE; x++) {
+		for (Rank y = 0; y < BOARD_SIZE; y++) {
 			Piece p = PIECE_AT(board, x, y);
 			if (PIECE_TYPE(p) != type || PLAYER(p) != board->turn)
 				continue;

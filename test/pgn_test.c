@@ -3,13 +3,12 @@
 #include <sys/sysinfo.h>
 #include "../src/chess/pgn.h"
 
-static gchar *data_dir = "/home/msmaldi/Projects/dotnet/ChessBaseDownloader/pgn";
+static gchar *data_dir = "/home/msmaldi/Projects/dotnet/ChessBaseDownloader/pgn/";//"/home/msmaldi/Projects/c/chess/data/pgn/";// "/home/msmaldi/Projects/dotnet/ChessBaseDownloader/pgn/";//
 static GDir *dir;
 
 typedef struct
 {
-    gchar full_path[1024];
-    const gchar *filename;
+    gchar full_path[2048];
     PGN *pgn;
     GError *error;
 } PgnTestData;
@@ -19,24 +18,26 @@ do_work (gpointer data)
 {
     PgnTestData *pgn_data_test = (PgnTestData*)data;
     pgn_data_test->error = NULL;
+    const gchar *filename;
 
-    while ((pgn_data_test->filename = g_dir_read_name (dir)))
+    while ((filename = g_dir_read_name (dir)))
     {
         pgn_data_test->pgn = g_new0 (PGN, 1);
-        g_snprintf (pgn_data_test->full_path, 1024, "%s/%s", data_dir, pgn_data_test->filename);
-
+        g_snprintf (pgn_data_test->full_path, 2048, "%s%s", data_dir, filename);
+        
         gboolean success = chess_read_pgn (pgn_data_test->pgn, pgn_data_test->full_path, &pgn_data_test->error);
 
         if (!success)
         {
             g_printerr ("%s\n", pgn_data_test->full_path);
+            g_printerr ("%s\n", filename);
             g_printerr ("%s\n", pgn_data_test->error->message);
 
             pgn_data_test->error = NULL;
         }
-
         pgn_free (pgn_data_test->pgn);
-    }
+    }    
+
     return NULL;
 }
 
@@ -47,6 +48,12 @@ main(int argc, char const *argv[])
     gint nproc = get_nprocs ();
 
     dir = g_dir_open (data_dir, 0, &error);
+    if (dir == NULL)
+    {
+        g_print ("%s", error->message);
+        return 1;
+    }
+
     g_print ("Found Threads: %d\nPGN Directory: %s\n", nproc, data_dir);
 
     PgnTestData *data[nproc];
@@ -54,7 +61,7 @@ main(int argc, char const *argv[])
 
     for(gint i = 0; i < nproc; i++)
     {
-        data[i] =  g_new0 (PgnTestData, 1); 
+        data[i] =  g_new0 (PgnTestData, 1);
         thread[i] =  g_thread_new (NULL, do_work, data[i]);
     }
     for(gint i = 0; i < nproc; i++)

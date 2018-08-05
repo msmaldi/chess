@@ -6,6 +6,8 @@
 void
 perform_move (Board *board, Move move)
 {
+	//print_board (board);
+
 	Square start = START_SQUARE (move);
 	Square end = END_SQUARE (move);
 	Piece p = PIECE_AT_SQUARE (board, start);
@@ -119,8 +121,8 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 {
 	Square start = START_SQUARE (move);
 	Square end = END_SQUARE (move);
-	gint dx = SQUARE_X(end) - SQUARE_X(start);
-	gint dy = SQUARE_Y(end) - SQUARE_Y(start);
+	int_fast8_t dx = SQUARE_X(end) - SQUARE_X(start);
+	int_fast8_t dy = SQUARE_Y(end) - SQUARE_Y(start);
 	Piece p = PIECE_AT_SQUARE(board, start);
 	PieceType type = PIECE_TYPE(p);
 	Piece at_end_square = PIECE_AT_SQUARE(board, end);
@@ -148,11 +150,11 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	if (dx == 0 && dy == 0)
 		return FALSE;
 
-	gint ax = ABS(dx);
-	gint ay = ABS(dy);
+	int_fast8_t ax = ABS(dx);
+	int_fast8_t ay = ABS(dy);
 
-	gint x_direction = ax == 0 ? 0 : dx / ax;
-	gint y_direction = ay == 0 ? 0 : dy / ay;
+	int_fast8_t x_direction = ax == 0 ? 0 : dx / ax;
+	int_fast8_t y_direction = ay == 0 ? 0 : dy / ay;
 
 	// Pieces other than knights are blocked by intervening pieces
 	if (type != KNIGHT) 
@@ -175,8 +177,8 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	gboolean legal_movement = FALSE;
 	switch (type) {
 	case PAWN:
-		if ((player == WHITE && SQUARE_Y(start) == 1) ||
-			(player == BLACK && SQUARE_Y(start) == 6)) 
+		if ((player == WHITE && SQUARE_Y(start) == RANK_WHITE_PAWN) ||
+			(player == BLACK && SQUARE_Y(start) == RANK_BLACK_PAWN)) 
 		{
 			if (ay != 1 && ay != 2) 
 			{
@@ -196,8 +198,8 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 			break;
 		}
 
-		gint end_y = SQUARE_Y (end);
-		if (end_y == 7 || end_y == 0)
+		Rank end_y = SQUARE_Y (end);
+		if (end_y == RANK_WHITE_PAWN || end_y == RANK_BLACK_PAWN)
 		{
 			PieceType promotion = PROMOTION (move);
 			if (!IS_PROMOTABLE (promotion))
@@ -262,33 +264,11 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	if (!legal_movement)
 		return FALSE;
 
-	// if (type == PAWN)
-	// {
-	// 	gint end_y = SQUARE_Y (end);
-	// 	if (end_y == 7 || end_y == 0)
-	// 	{
-	// 		PieceType promotion = PROMOTION (move);
-	// 		if (IS_PROMOTABLE (promotion))
-	// 		{
-	// 			legal_movement = TRUE;				
-	// 		}
-	// 		else
-	// 		{
-	// 			legal_movement = FALSE;
-	// 		}
-	// 	}
-	// }
-
 	// At this point everything looks fine. The only thing left to check is
 	// whether the move puts us in check. We've checked enough of the move
 	// that perform_move should be able to handle it.
 	if (check_for_check)
-	{
-		// Square player_king = find_king (board, player);
-		// if (player_king == NULL_SQUARE)
-		// 	return FALSE;
 		return !gives_check(board, move, player);
-	}
 	else
 		return legal_movement;
 }
@@ -297,28 +277,28 @@ gboolean
 gives_check(Board *board, Move move, Player player)
 {
 	Board copy;
-	copy_board(&copy, board);
-	perform_move(&copy, move);
+	copy_board (&copy, board);
+	perform_move (&copy, move);
 
-	return in_check(&copy, player);
+	return in_check (&copy, player);
 }
 
 gboolean
 gives_mate(Board *board, Move move, Player player)
 {
 	Board copy;
-	copy_board(&copy, board);
-	perform_move(&copy, move);
+	copy_board (&copy, board);
+	perform_move (&copy, move);
 
-	return checkmate(&copy, player);
+	return checkmate (&copy, player);
 }
 
 
 static gboolean
-has_multiples_ambiguous_piece_n (Board *board, Move move)
+has_multiples_ambiguous_piece (Board *board, Move move)
 {
 	Square start_move = START_SQUARE (move);
-	PieceType type = PIECE_TYPE(PIECE_AT_SQUARE(board, start_move));
+	PieceType type = PIECE_TYPE (PIECE_AT_SQUARE (board, start_move));
 	
 	gboolean rank_is_ambibuous = FALSE;
 	gboolean file_is_ambibuous = FALSE;
@@ -418,7 +398,9 @@ algebraic_notation_for (Board *board, Move move, gchar *str)
 		str[i++] = "\0\0NBRQK"[type];
 	}
 
-	gboolean multiples_ambiguous = has_multiples_ambiguous_piece_n (board, move);
+
+
+	gboolean multiples_ambiguous = has_multiples_ambiguous_piece (board, move);
 	if (multiples_ambiguous)
 	{
 		str[i++] = FILE_CHAR (SQUARE_FILE(start));
@@ -426,7 +408,8 @@ algebraic_notation_for (Board *board, Move move, gchar *str)
 	}
 	else
 	{
-		// Add the number/letter of the rank/file of the moving piece if necessary
+		// Add the number/letter of the rank/file
+		// of the moving piece if necessary
 		Square ambig = ambiguous_piece(board, move);
 		// We always add the file if it's a pawn capture
 		if (ambig != NULL_SQUARE || (type == PAWN && capture)) {

@@ -636,7 +636,9 @@ find_piece_looking_at(Board *board, Square square, Player piece_owner)
 	// However, we don't actually need to see if the moves put us into check in
 	// this case, as it doesn't matter if taking their king puts us in check;
 	// we've already won.
-	gboolean care_about_check = PIECE_TYPE(PIECE_AT_SQUARE(board, square)) != KING;
+	//
+	// We don't need care_about_check, we will get move without check for check
+	// gboolean care_about_check = PIECE_TYPE(PIECE_AT_SQUARE(board, square)) != KING;
 
 	Player initial_turn = board->turn;
 	board->turn = piece_owner;
@@ -648,11 +650,14 @@ find_piece_looking_at(Board *board, Square square, Player piece_owner)
 		for (File file = FILE_A; file <= FILE_H; file++)
 		{
 			Piece p = PIECE_AT(board, file, rank);
+			if (PLAYER (p) != piece_owner)
+				continue;
 			Square s = SQUARE(file, rank);
 			Move m = MOVE(s, square);
 
-			if (PLAYER(p) == piece_owner &&
-					legal_move(board, m, care_about_check)) {
+			//if (PLAYER(p) == piece_owner &&
+			if (legal_move(board, m, FALSE))
+			{
 				ret = s;
 				goto cleanup;
 			}
@@ -707,7 +712,7 @@ in_check(Board *board, Player p)
 {
 	Square king_location = find_king (board, p);
 	//g_assert (king_location != NULL_SQUARE); // both players should have a king
-	return king_location == NULL_SQUARE || under_attack (board, king_location, OTHER_PLAYER(p));
+	return under_attack (board, king_location, OTHER_PLAYER(p));
 }
 
 // This could be more simply written as "number of legal moves = 0", if the
@@ -726,36 +731,38 @@ checkmate(Board *board, Player p)
 	Rank y = SQUARE_Y (king_location);
 
 	// Can the king move out of check?
-	for (int dx = -1; dx < 2; dx++) {
-		for (int dy = -1; dy < 2; dy++) {
+	for (File dx = -1; dx < 2; dx++) 
+	{
+		for (Rank dy = -1; dy < 2; dy++) 
+		{
 			if (x + dx < 0 || x + dx >= BOARD_SIZE ||
 					y + dy < 0 || y + dy >= BOARD_SIZE || (dx == 0 && dy == 0))
 				continue;
 			Move m = MOVE(king_location, SQUARE(x + dx, y + dy));
-			if (legal_move(board, m, TRUE))
+			if (legal_move (board, m, TRUE))
 				return FALSE;
 		}
 	}
 
 	// Can the attacking piece be captured?
-	Square attacker = find_attacking_piece(board, king_location, other);
-	if (under_attack(board, attacker, p))
+	Square attacker = find_attacking_piece (board, king_location, other);
+	if (under_attack (board, attacker, p))
 		return FALSE;
 
 	// Can we block?
 	PieceType type = PIECE_TYPE(PIECE_AT_SQUARE(board, attacker));
 	if (type != KNIGHT) {
-		gint dx = SQUARE_X(attacker) - x;
-		gint dy = SQUARE_Y(attacker) - y;
+		File dx = SQUARE_X(attacker) - x;
+		Rank dy = SQUARE_Y(attacker) - y;
 
-		gint ax = ABS(dx);
-		gint ay = ABS(dy);
+		File ax = ABS(dx);
+		Rank ay = ABS(dy);
 
-		gint x_direction = ax == 0 ? 0 : dx / ax;
-		gint y_direction = ay == 0 ? 0 : dy / ay;
+		File x_direction = ax == 0 ? 0 : dx / ax;
+		Rank y_direction = ay == 0 ? 0 : dy / ay;
 
-		guint x = SQUARE_X(king_location) + x_direction;
-		guint y = SQUARE_Y(king_location) + y_direction;
+		File x = SQUARE_X(king_location) + x_direction;
+		Rank y = SQUARE_Y(king_location) + y_direction;
 		while (!(x == SQUARE_X(attacker) &&
 					y == SQUARE_Y(attacker))) 
 		{
