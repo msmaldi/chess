@@ -1,25 +1,28 @@
 #include <gtk/gtk.h>
 #include "uci_engine.h"
+#include "../chess/chess.h"
+#include "../application/application.h"
+#include "../notebook/page_home.h"
 
 gboolean
 cb_execute( GtkWidget *widget,
             gpointer  *user_data )
 {
-    uci_engine *engine = uci_engine_new ("stockfish");
-    GError *engine_error;
-    init_engine (engine, &engine_error);
+    uci_engine_init_fen (engine, fen);
 
-    uci_engine_init_fen (engine, "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
-
-    uci_engine_free (engine);
+    uci_engine_requestmove (engine);
+    set_button_sensitivity ();
 }
 
 uci_engine*
 uci_engine_new (gchar *engine)
 {
-    uci_engine* result = g_new (uci_engine, 1);
+    uci_engine* result = g_new0 (uci_engine, 1);
     result->engine_full_path = g_strdup (engine);
     result->is_initialized = FALSE;
+    result->thinking = FALSE;
+    result->bestmove = NULL_MOVE;
+    result->ponder = NULL_MOVE;
     return result;
 }
 
@@ -46,12 +49,64 @@ out_watch (GIOChannel   *channel,
         return FALSE;
     }
 
-    g_io_channel_read_line (channel, &buffer, &size, NULL, NULL);
     if (engine->engine_description == NULL)
+    {
+        g_io_channel_read_line (channel, &buffer, &size, NULL, NULL);
         engine->engine_description = g_strdup (buffer);
+            
+        g_print ("%s", buffer);
+        g_free (buffer);
 
-    g_print ("%s", buffer);
-    g_free (buffer);
+        return TRUE;
+    }
+    if (engine->thinking)
+    {
+        g_io_channel_read_line (channel, &buffer, &size, NULL, NULL);
+        if (g_str_has_prefix (buffer, "info"))
+        {
+            g_print ("%s", buffer);
+            g_free (buffer);
+        }
+
+        if (g_str_has_prefix (buffer, "bestmove (none)"))
+        {
+            g_print ("%s", buffer);
+            g_free (buffer);
+            engine->thinking = FALSE;
+            engine->bestmove = NULL_MOVE;
+
+            return TRUE;
+        }
+        if (g_str_has_prefix (buffer, "bestmove "))
+        {
+            File start_file = CHAR_FILE (buffer[9]);
+            Rank start_rank = CHAR_RANK (buffer[10]);
+            File end_file = CHAR_FILE (buffer[11]);
+            Rank end_rank = CHAR_RANK (buffer[12]);
+
+            Move m = MOVE (SQUARE (start_file, start_rank), SQUARE (end_file, end_rank));
+            if (buffer[13] != ' ')
+            {          
+                PieceType promotion = PIECE_TYPE (piece_from_char (buffer[13]));
+                m = PROMOTE (m, promotion);
+            }
+
+            g_print ("%s", buffer);
+            g_free (buffer);
+
+            //Move m = MOVE (SQUARE (start_file, start_rank), SQUARE (end_file, end_rank));
+            chess_print_move (m);
+            engine->bestmove = m;
+            engine->thinking = FALSE;
+
+            if (engine->on_getmove_callback != NULL)
+                engine->on_getmove_callback (NULL);
+
+            return TRUE;
+        }
+    }
+
+
 
     return TRUE;
 }
@@ -105,9 +160,24 @@ uci_engine_init_fen (uci_engine *engine, gchar *fen)
     if (error != NULL)
         g_print("%s\n", error->message);
 
-    g_io_channel_write_chars (engine->in_ch, "go\n", 3, &bytes_written, &error);
+    //g_io_channel_write_chars (engine->in_ch, "go\n", 3, &bytes_written, &error);
 
     g_io_channel_flush (engine->in_ch, &error);
+}
+
+void
+uci_engine_requestmove (uci_engine *engine)
+{    
+    GError *error = NULL;
+    gsize bytes_written;
+    gchar *uci_command = g_strdup_printf ("go depth 20\n");
+    
+    g_io_channel_write_chars (engine->in_ch, uci_command, g_utf8_strlen (uci_command, 100), &bytes_written, &error);
+    if (error != NULL)
+        g_print("%s\n", error->message);
+    g_io_channel_flush (engine->in_ch, &error);
+
+    engine->thinking = TRUE;
 }
 
 void
@@ -116,9 +186,7 @@ uci_engine_get_uci_options_new (uci_engine *engine)
     while (engine->lock)
         g_usleep (100);
     engine->lock = TRUE;
-
 }
-
 
 void
 uci_engine_free  (uci_engine *engine)

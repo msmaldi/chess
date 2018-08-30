@@ -5,19 +5,19 @@
 
 // A move is represented as 8 bytes, represented by:
 //
-//  |    2 bytes    |    2 bytes    |    2 bytes    |    2 bytes    |                            
-//  63--------------48--------------32--------------16--------------0
+//  |    1 bytes    |    1 bytes    |    1 bytes    |    1 bytes    |                            
+//  32--------------24--------------16--------------8---------------0
 //  |     empty     |   Piece Type  |  Square Start |  Square end   |                                               
 //
 // Default PieceType to promote is QUEEN, if you want change, use
 // PROMOTE to change piece.
-typedef uint_fast64_t Move;
+typedef int_fast32_t Move;
 
-#define MOVE(start, end)     ((Move)(((u_int64_t)QUEEN << 32) | (start << 16) | (end)))
-#define PROMOTE(move, piece) ((Move)(((u_int64_t)piece << 32) | (move & 0xFFFFFFFF)))
-#define START_SQUARE(move)   ((Square)(((move) & 0xFFFFFFFF) >> 16))
-#define END_SQUARE(move)     ((Square)((move) & 0xFFFF))
-#define PROMOTION(move)      ((PieceType) (((move) >> 32)))
+#define MOVE(start, end)     ((Move)((QUEEN << 16) | (start << 8) | (end)))
+#define PROMOTE(move, piece) ((Move)((piece << 16) | (move & 0xFFFF)))
+#define START_SQUARE(move)   ((Square)(((move) & 0xFFFF) >> 8))
+#define END_SQUARE(move)     ((Square)((move) & 0xFF))
+#define PROMOTION(move)      ((PieceType) (((move) >> 16)))
 #define NULL_MOVE            ((Move)(~((Move)0)))
 
 #define FILE_CHAR(file) ('a' + (file))
@@ -28,7 +28,9 @@ typedef uint_fast64_t Move;
 void        chess_print_move        (Move m);
 void        perform_move            (Board *board, Move move);
 gboolean    legal_move              (Board *board, Move move, 
-                                     gboolean check_for_check);
+                                     gboolean check_for_check); // pseudo_legal_move
+gboolean    pseudo_legal_move       (Board *board, Move move);
+
 gboolean    gives_check             (Board *board, Move move, Player player);
 gboolean    gives_mate              (Board *board, Move move, Player player);
 

@@ -36,19 +36,6 @@ chess_read_pgn (PGN *pgn, const gchar *filename, GError **error)
 
     Board board;
 
-	// We just load the whole file into memory.
-	// PGN files are typically very short: even the longest game in tournament
-	// history is only about 3.5KB.
-	// If someone tries to load a 2GB PGN and complains about it crashing, they
-	// need to take a long, hard look at themself.
-	//GFile *file = g_file_new_for_path(filename);
-	//if (!g_file_load_contents(file, NULL, &buffer, &length, NULL, error)) 
-    //{
-	//	result = FALSE;
-    //    g_print ("Problem to read\n");
-    //		goto cleanup;
-	//}
-
     if (!g_file_get_contents (filename, &buffer, &length, error))
     {   
         result = FALSE;
@@ -289,7 +276,6 @@ read_number_dot_dot_dot (guint move_number, gchar *buffer, GError **error)
 	 		"Move number must be 1 to 9999.");		
         return 0;        
     }
-    //g_print ("%s\n", buffer);
 
     gchar number_str[8];
     gint len = g_snprintf (number_str, 7, "%d...", move_number);
@@ -297,7 +283,7 @@ read_number_dot_dot_dot (guint move_number, gchar *buffer, GError **error)
     gint skip = 0;
     while ((SKIPABLE_CHAR(buffer[skip])) && skip < 5)
         skip++;
-    if (skip == 7)
+    if (skip == 5)
     {
         g_set_error (error, 1, 1, 
 	 		"Preven buffer overflow.");
@@ -495,10 +481,75 @@ parse_move (Board *board, gchar *notation)
         // capture with pawn always have a desambig and it is the first char
         // e.g exd5 after stripped ed5
 		if (stripped_len == 3)
+        {
 	 		disambig = stripped[i++];
+            
+            File start_file = CHAR_FILE (disambig);
+
+            File end_file = CHAR_FILE (stripped[i++]);
+            Rank end_rank = CHAR_RANK (stripped[i++]);
+
+            Rank start_rank = board->turn == BLACK ? end_rank + 1 : end_rank - 1;
+
+            Move m = MOVE (SQUARE (start_file, start_rank), SQUARE (end_file, end_rank));
+            if (has_promotion)
+				m = PROMOTE (m, promotion);
+            if (legal_move(board, m, TRUE))
+			    return m;
+		    else
+			    return NULL_MOVE;
+
             // TODO: Here we can get imediate move, is just get, the desambig 
             // and add +1 for RANK if pawn is black and -1 is White
-        
+        }   
+        // Else, is a move without capture, rank start and end are equals    
+        else
+        {
+            File end_file = CHAR_FILE (stripped[i++]);
+            Rank end_rank = CHAR_RANK (stripped[i++]);
+
+            File start_file = end_file;
+            if (board->turn == BLACK)
+            {
+                File start_rank = end_rank + 1;
+                Move m = MOVE (SQUARE (start_file, start_rank), SQUARE (end_file, end_rank));
+                if (has_promotion)
+				    m = PROMOTE (m, promotion);
+                if (legal_move(board, m, TRUE))
+			        return m;
+                else
+                {
+                    File start_rank = end_rank + 2;
+                    Move m = MOVE (SQUARE (start_file, start_rank), SQUARE (end_file, end_rank));
+                    if (has_promotion)
+                        m = PROMOTE (m, promotion);
+                    if (legal_move(board, m, TRUE))
+			            return m;
+                    else
+                        return NULL_MOVE;
+                }
+            }
+            else
+            {
+                File start_rank = end_rank -1;
+                Move m = MOVE (SQUARE (start_file, start_rank), SQUARE (end_file, end_rank));
+                if (has_promotion)
+				    m = PROMOTE (m, promotion);
+                if (legal_move(board, m, TRUE))
+			        return m;
+                else
+                {
+                    File start_rank = end_rank - 2;
+                    Move m = MOVE (SQUARE (start_file, start_rank), SQUARE (end_file, end_rank));
+                    if (has_promotion)
+                        m = PROMOTE (m, promotion);
+                    if (legal_move(board, m, TRUE))
+			            return m;
+                    else
+                        return NULL_MOVE;
+                }
+            }
+        }
 	} 
     else 
     {
@@ -554,29 +605,24 @@ parse_move (Board *board, gchar *notation)
 				continue;
 
 			Move m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
-			if (has_promotion)
-				m = PROMOTE (m, promotion);
-
 			if (legal_move(board, m, TRUE))
 				return m;
 		}
 		return NULL_MOVE;
 	}
 
-	for (File x = 0; x < BOARD_SIZE; x++) {
-		for (Rank y = 0; y < BOARD_SIZE; y++) {
-			Piece p = PIECE_AT(board, x, y);
-			if (PIECE_TYPE(p) != type || PLAYER(p) != board->turn)
-				continue;
-			
-			Move m = MOVE(SQUARE(x, y), SQUARE(target_file, target_rank));
-			if (has_promotion)
-				m = PROMOTE (m, promotion);
-			
-			if (legal_move(board, m, TRUE))
-				return m;
-		}
-	}
+    Square target = SQUARE(target_file, target_rank);
+    for(Square square = SQ_A1; square <= SQ_H8; square++)
+    {
+        Piece p = PIECE_AT_SQUARE (board, square);
+        if (PIECE_TYPE(p) != type || PLAYER(p) != board->turn)
+            continue;
+        
+        Move m = MOVE(square, target);        
+        if (legal_move(board, m, TRUE))
+            return m;
+    }
+    
 
 	return NULL_MOVE;
 }

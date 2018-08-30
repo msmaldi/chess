@@ -6,8 +6,6 @@
 void
 perform_move (Board *board, Move move)
 {
-	//print_board (board);
-
 	Square start = START_SQUARE (move);
 	Square end = END_SQUARE (move);
 	Piece p = PIECE_AT_SQUARE (board, start);
@@ -40,18 +38,24 @@ perform_move (Board *board, Move move)
 
 	// Check if we're castling so we can move the rook too
 	gint dx = SQUARE_X(end) - SQUARE_X(start);
-	if (type == KING && ABS(dx) > 1) 
+	if (type == KING) 
 	{
-		guint y = player == WHITE ? 0 : BOARD_SIZE - 1;
-		gboolean kingside = SQUARE_X(end) == 6;
-		if (kingside) 
+		board->king[board->turn] = end;
+
+		if (ABS(dx) > 1)
 		{
-			PIECE_AT(board, 7, y) = EMPTY;
-			PIECE_AT(board, 5, y) = PIECE(player, ROOK);
-		} else 
-		{
-			PIECE_AT(board, 0, y) = EMPTY;
-			PIECE_AT(board, 3, y) = PIECE(player, ROOK);
+			guint y = player == WHITE ? 0 : BOARD_SIZE - 1;
+			gboolean kingside = SQUARE_X(end) == 6;
+			if (kingside) 
+			{
+				PIECE_AT(board, 7, y) = EMPTY;
+				PIECE_AT(board, 5, y) = PIECE(player, ROOK);
+			} 
+			else 
+			{
+				PIECE_AT(board, 0, y) = EMPTY;
+				PIECE_AT(board, 3, y) = PIECE(player, ROOK);
+			}
 		}
 	}
 
@@ -61,34 +65,17 @@ perform_move (Board *board, Move move)
 	{
 		c->kingside = FALSE;
 		c->queenside = FALSE;
-	} 
-	else if (type == ROOK) 
-	{
-		if (SQUARE_X(start) == FILE_H) 
-		{
-			c->kingside = FALSE;
-		} 
-		else if (SQUARE_X(start) == FILE_A) 
-		{
-			c->queenside = FALSE;
-		}
 	}
 	else
 	{
-		if (player == WHITE)
-		{
-			if (end == SQUARE(FILE_A, RANK_8))
-				board->castling[BLACK].queenside = FALSE;
-			else if (end == SQUARE(FILE_H, RANK_8))
-				board->castling[BLACK].kingside = FALSE;
-		}
-		else 
-		{
-			if (end == SQUARE(FILE_A, RANK_1))
-				board->castling[WHITE].queenside = FALSE;
-			else if (end == SQUARE(FILE_H, RANK_1))
-				board->castling[WHITE].kingside = FALSE;
-		}
+		if (start == SQ_A1 || end == SQ_A1)
+			board->castling[WHITE].queenside = FALSE;
+		if (start == SQ_A8 || end == SQ_A8)
+			board->castling[BLACK].queenside = FALSE;
+		if (start == SQ_H1 || end == SQ_H1)
+			board->castling[WHITE].kingside = FALSE;
+		if (start == SQ_H8 || end == SQ_H8)
+			board->castling[BLACK].kingside = FALSE;
 	}
 
 	// Check if we should reset the half-move clock
@@ -105,11 +92,11 @@ perform_move (Board *board, Move move)
 	if (type == PAWN)
 	{
 		PieceType promotion = PROMOTION (move);
-		if (SQUARE_Y(end) == 0)
+		if (SQUARE_RANK(end) == RANK_BLACK_PROMOTION)
 		{		
 			PIECE_AT_SQUARE(board, end) = PIECE(BLACK, promotion);
 		}
-		else if (SQUARE_Y(end) == 7)
+		else if (SQUARE_RANK(end) == RANK_WHITE_PROMOTION)
 		{
 			PIECE_AT_SQUARE(board, end) = PIECE(WHITE, promotion);
 		}
@@ -121,8 +108,6 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 {
 	Square start = START_SQUARE (move);
 	Square end = END_SQUARE (move);
-	int_fast8_t dx = SQUARE_X(end) - SQUARE_X(start);
-	int_fast8_t dy = SQUARE_Y(end) - SQUARE_Y(start);
 	Piece p = PIECE_AT_SQUARE(board, start);
 	PieceType type = PIECE_TYPE(p);
 	Piece at_end_square = PIECE_AT_SQUARE(board, end);
@@ -131,24 +116,163 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 
 	// Can't move a piece that isn't there
 	if (type == EMPTY)
-	{
 		return FALSE;
-	}
 
 	// Can only move if it's your turn
 	if (player != board->turn)
-	{
 		return FALSE;
-	}
 
 	// Can't capture your own pieces
 	if (at_end_square != EMPTY && PLAYER(at_end_square) == player)
-	{
 		return FALSE;
-	}
+
 	// Can't "move" a piece by putting it back onto the same square
-	if (dx == 0 && dy == 0)
+	if (start == end)
 		return FALSE;
+
+	int_fast8_t dx = SQUARE_X(end) - SQUARE_X(start);
+	int_fast8_t dy = SQUARE_Y(end) - SQUARE_Y(start);
+
+	int_fast8_t ax = ABS(dx);
+	int_fast8_t ay = ABS(dy);
+
+	int_fast8_t x_direction = ax == 0 ? 0 : dx / ax;
+	int_fast8_t y_direction = ay == 0 ? 0 : dy / ay;
+
+	// Pieces other than knights are blocked by intervening pieces
+	if (type != KNIGHT) 
+	{
+		guint x = SQUARE_X(start) + x_direction;
+		guint y = SQUARE_Y(start) + y_direction;
+
+		while ((!(x == SQUARE_X(end) && y == SQUARE_Y(end))) &&
+				x < BOARD_SIZE && y < BOARD_SIZE) 
+		{
+			if (PIECE_AT(board, x, y) != EMPTY)
+				return FALSE;
+
+			x += x_direction;
+			y += y_direction;
+		}
+	}
+
+	// Now handle each type of movement
+	gboolean legal_movement = FALSE;
+	switch (type) {
+	case PAWN:
+		if ((player == WHITE && SQUARE_Y(start) == RANK_WHITE_PAWN) ||
+			(player == BLACK && SQUARE_Y(start) == RANK_BLACK_PAWN)) 
+		{
+			if (ay != 1 && ay != 2) 
+			{
+				legal_movement = FALSE;
+				break;
+			}
+		} 
+		else if (ay != 1) 
+		{
+			legal_movement = FALSE;
+			break;
+		}
+
+		if (y_direction != (player == WHITE ? 1 : -1))
+		{
+			legal_movement = FALSE;
+			break;
+		}
+
+		Rank end_y = SQUARE_Y (end);
+		if (end_y == RANK_WHITE_PROMOTION || end_y == RANK_BLACK_PROMOTION)
+		{
+			PieceType promotion = PROMOTION (move);
+			if (!IS_PROMOTABLE (promotion))
+			{
+				legal_movement = FALSE;
+				break;			
+			}
+		}
+
+		if (dx == 0)
+		{
+			legal_movement = at_end_square == EMPTY;
+			break;
+		}
+
+		if (dx == 1 || dx == -1)
+		{
+			legal_movement = (ay == 1 && at_end_square != EMPTY &&
+					PLAYER(at_end_square) != player) ||
+					end == board->en_passant;
+			break;
+		}
+
+		legal_movement = FALSE;
+		break;
+	case KNIGHT:
+		legal_movement = (ax == 1 && ay == 2) || (ax == 2 && ay == 1);
+		break;
+	case BISHOP: legal_movement = ax == ay; break;
+	case ROOK:   legal_movement = dx == 0 || dy == 0; break;
+	case QUEEN:  legal_movement = ax == ay || dx == 0 || dy == 0; break;
+	case KING:
+		if (ax <= 1 && ay <= 1)
+		{
+			legal_movement = TRUE;
+			break;
+		}
+		if (SQUARE_RANK (end) != (player == WHITE ? RANK_WHITE_CASTLE : RANK_BLACK_CASTLE))
+		{
+			legal_movement = FALSE;
+			break;
+		}
+
+		if (SQUARE_FILE (end) == FILE_CASTLE_KINGSIDE)
+		{			
+			legal_movement = can_castle_kingside(board, player);
+			break;
+		} 
+		else if (SQUARE_FILE (end) == FILE_CASTLE_QUEENSIDE)
+		{
+			legal_movement = can_castle_queenside(board, player);
+			break;
+		}
+		else
+		{
+			legal_movement = FALSE;
+			break;
+		}
+	case EMPTY:  legal_movement = FALSE; break;
+	}
+
+	if (!legal_movement)
+		return FALSE;
+
+	// At this point everything looks fine. The only thing left to check is
+	// whether the move puts us in check. We've checked enough of the move
+	// that perform_move should be able to handle it.
+	if (check_for_check)
+		return !gives_check(board, move, player);
+	else
+		return legal_movement;
+}
+
+gboolean
+pseudo_legal_move (Board *board, Move move)
+{
+	Square start = START_SQUARE (move);
+	Square end = END_SQUARE (move);
+	Piece p = PIECE_AT_SQUARE(board, start);
+	PieceType type = PIECE_TYPE(p);
+	Piece at_end_square = PIECE_AT_SQUARE(board, end);
+
+	Player player = PLAYER (p);
+
+	// Can't "move" a piece by putting it back onto the same square
+	if (start == end)
+		return FALSE;
+
+	int_fast8_t dx = SQUARE_X(end) - SQUARE_X(start);
+	int_fast8_t dy = SQUARE_Y(end) - SQUARE_Y(start);
 
 	int_fast8_t ax = ABS(dx);
 	int_fast8_t ay = ABS(dy);
@@ -237,18 +361,18 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 			legal_movement = TRUE;
 			break;
 		}
-		if (SQUARE_Y(end) != (player == WHITE ? 0 : BOARD_SIZE - 1))
+		if (SQUARE_RANK (end) != (player == WHITE ? RANK_WHITE_CASTLE : RANK_BLACK_CASTLE))
 		{
 			legal_movement = FALSE;
 			break;
 		}
 
-		if (SQUARE_X(end) == 6)
+		if (SQUARE_FILE (end) == FILE_CASTLE_KINGSIDE)
 		{			
 			legal_movement = can_castle_kingside(board, player);
 			break;
 		} 
-		else if (SQUARE_X(end) == 2)
+		else if (SQUARE_FILE (end) == FILE_CASTLE_QUEENSIDE)
 		{
 			legal_movement = can_castle_queenside(board, player);
 			break;
@@ -261,20 +385,11 @@ legal_move (Board *board, Move move, gboolean check_for_check)
 	case EMPTY:  legal_movement = FALSE; break;
 	}
 
-	if (!legal_movement)
-		return FALSE;
-
-	// At this point everything looks fine. The only thing left to check is
-	// whether the move puts us in check. We've checked enough of the move
-	// that perform_move should be able to handle it.
-	if (check_for_check)
-		return !gives_check(board, move, player);
-	else
-		return legal_movement;
+	return legal_movement;
 }
 
 gboolean
-gives_check(Board *board, Move move, Player player)
+gives_check (Board *board, Move move, Player player)
 {
 	Board copy;
 	copy_board (&copy, board);
@@ -284,7 +399,7 @@ gives_check(Board *board, Move move, Player player)
 }
 
 gboolean
-gives_mate(Board *board, Move move, Player player)
+gives_mate (Board *board, Move move, Player player)
 {
 	Board copy;
 	copy_board (&copy, board);
@@ -333,17 +448,17 @@ has_multiples_ambiguous_piece (Board *board, Move move)
 static Square 
 ambiguous_piece (Board *board, Move move)
 {
-	PieceType type = PIECE_TYPE(PIECE_AT_SQUARE(board, START_SQUARE (move)));
-	for (guint x = 0; x < BOARD_SIZE; x++) {
-		for (guint y = 0; y < BOARD_SIZE; y++) {
-			Square curr_square = SQUARE(x, y);
-			if (curr_square == START_SQUARE (move))
-				continue;
-			if (PIECE_TYPE(PIECE_AT_SQUARE(board, curr_square)) == type &&
-					legal_move(board, MOVE(curr_square, END_SQUARE (move)), TRUE))
-				return curr_square;
-		}
-	}
+	Square start_square = START_SQUARE (move);
+	PieceType type = PIECE_TYPE(PIECE_AT_SQUARE(board, start_square));
+
+	for(Square square = SQ_A1; square <= SQ_H8; square++)
+	{
+		if (square == start_square)
+			continue;
+		if (PIECE_TYPE(PIECE_AT_SQUARE(board, square)) == type &&
+	 		legal_move(board, MOVE(square, END_SQUARE (move)), TRUE))
+	 		return square;
+	}	
 
 	return NULL_SQUARE;
 }

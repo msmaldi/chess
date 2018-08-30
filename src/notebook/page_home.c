@@ -12,6 +12,7 @@ void go_back_button_click_callback (GtkWidget *widget, gpointer data);
 void flip_button_click_callback (GtkWidget *widget, gpointer data);
 void copy_position_click_callback (GtkWidget *widget, gpointer data);
 void paste_position_click_callback (GtkWidget *widget, gpointer data);
+void engine_move_button_click_callback (GtkWidget *widget, gpointer data);
 
 GtkWidget*
 page_home_box ()
@@ -97,8 +98,8 @@ page_home_box ()
     g_signal_connect(G_OBJECT(home_button_undo), "clicked",
 	    G_CALLBACK(go_back_button_click_callback), chessboard);
 
-    //g_signal_connect(G_OBJECT(home_button_enginemove), "clicked",
-	//	    G_CALLBACK(cb_execute), chessboard);
+    g_signal_connect(G_OBJECT(home_button_enginemove), "clicked",
+		    G_CALLBACK(cb_execute), chessboard);
 
     g_signal_connect(G_OBJECT(home_button_flipboard), "clicked",
 		G_CALLBACK(flip_button_click_callback), NULL);
@@ -116,7 +117,8 @@ page_home_box ()
 
 void
 set_button_sensitivity ()
-{
+{ 
+    gtk_widget_set_sensitive (home_button_enginemove, !engine->thinking);
 	gtk_widget_set_sensitive (home_button_undo, chessboard->game->parent != NULL);
 	gtk_widget_set_sensitive (home_button_redo, has_children(chessboard->game));
 }
@@ -184,6 +186,8 @@ new_game_callback (GtkWidget *widget, gpointer data)
 void
 go_next_button_click_callback (GtkWidget *widget, gpointer data)
 {
+    chessboard_cancel_casting (chessboard);
+
 	chessboard->game = first_child (chessboard->game);
 	gtk_widget_queue_draw (chessboard->board_area);
 
@@ -194,6 +198,8 @@ go_next_button_click_callback (GtkWidget *widget, gpointer data)
 void
 go_back_button_click_callback (GtkWidget *widget, gpointer data)
 {
+    chessboard_cancel_casting (chessboard);
+
 	chessboard->game = chessboard->game->parent;
 	gtk_widget_queue_draw (chessboard->board_area);
 
@@ -257,4 +263,11 @@ copy_position_click_callback (GtkWidget *widget, gpointer data)
     gtk_clipboard_set_text (clipboard, 
                             gtk_entry_get_text (GTK_ENTRY (fen_input)), 100);
     g_print ("Coppied FEN: %s\n", fen);
+}
+
+
+void 
+engine_move_button_click_callback (GtkWidget *widget, gpointer data)
+{
+
 }

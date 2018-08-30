@@ -54,6 +54,9 @@ moves.o: src/chess/moves.c
 
 pgn.o: src/chess/pgn.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
+
+openning.o: src/chess/openning.c
+	$(CC) $(CFLAGS) -c $^ -o $@ $(CFLAGS_GLIB)
 ##################################################
 
 

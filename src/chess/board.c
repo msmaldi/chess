@@ -1,6 +1,7 @@
 #include "chessconfig.h"
 #include "board.h"
 #include "moves.h"
+#include <string.h>
 
 Board*
 board_new (void)
@@ -14,19 +15,22 @@ board_free (Board *board)
 	g_free (board);
 }
 
-void
+inline void
 copy_board (Board *dst, Board *src)
 {
-	dst->turn = src->turn;
-	dst->castling[BLACK] = src->castling[BLACK];
-	dst->castling[WHITE] = src->castling[WHITE];
-	dst->en_passant = src->en_passant;
-	dst->half_move_clock = src->half_move_clock;
-	dst->move_number = src->move_number;
+	// dst->turn = src->turn;
+	// dst->castling[BLACK] = src->castling[BLACK];
+	// dst->castling[WHITE] = src->castling[WHITE];
+	// dst->en_passant = src->en_passant;
+	// dst->half_move_clock = src->half_move_clock;
+	// dst->move_number = src->move_number;
+	
+	// for(Square square = SQ_A1; square <= SQ_H8; square++)
+	// 	PIECE_AT_SQUARE(dst, square) = PIECE_AT_SQUARE(src, square);
 
-	for(File file = FILE_A; file <= FILE_H; file++)		
-		for(Rank rank = RANK_1; rank <= RANK_8; rank++)
-			PIECE_AT(dst, file, rank) = PIECE_AT(src, file, rank);
+	// dst->king[BLACK] = src->king[BLACK];
+	// dst->king[WHITE] = src->king[WHITE];	
+	memcpy (dst, src, sizeof (Board));
 }
 
 // Converts a piece into a char, using the standard used in PGN and FEN
@@ -220,9 +224,15 @@ board_from_fen (Board *board, const gchar *fen_str, GError **error)
 				}		
 				Piece piece = piece_from_char (fen_str[index]);
 				if (piece == BLACK_KING)
+				{
 					b_king_count++;
+					board->king[BLACK] = SQUARE (file, rank);
+				}
 				else if (piece == WHITE_KING)
+				{
 					w_king_count++;
+					board->king[WHITE] = SQUARE (file, rank);
+				}
 
 				PIECE_AT (board, file, rank) = piece;
 				file++;
@@ -624,95 +634,91 @@ print_board(Board *board)
 	g_print ("FEN: %s\n\n", fen);
 }
 
-static Square
-find_piece_looking_at(Board *board, Square square, Player piece_owner)
+static inline Square
+find_piece_looking_at (Board *board, Square square, Player piece_owner)
 {
 	// We need to make sure we don't have infinite recursion in legal_move.
 	// This can happen with looking for checks - we need to see if there are
 	// any moves that put us in check to decide if the move is legal, but to
 	// see if we are in check we need to look at all the moves our opponent
 	// can make. And checking those moves will follow the same process.
-	//
-	// However, we don't actually need to see if the moves put us into check in
-	// this case, as it doesn't matter if taking their king puts us in check;
-	// we've already won.
-	//
-	// We don't need care_about_check, we will get move without check for check
-	// gboolean care_about_check = PIECE_TYPE(PIECE_AT_SQUARE(board, square)) != KING;
-
-	Player initial_turn = board->turn;
-	board->turn = piece_owner;
-
-	Square ret = NULL_SQUARE;
-
-	for (Rank rank = RANK_1; rank <= RANK_8; rank++) 
+	for(Square s = SQ_A1; s <= SQ_H8; s++)
 	{
-		for (File file = FILE_A; file <= FILE_H; file++)
-		{
-			Piece p = PIECE_AT(board, file, rank);
-			if (PLAYER (p) != piece_owner)
-				continue;
-			Square s = SQUARE(file, rank);
-			Move m = MOVE(s, square);
+		Piece p = PIECE_AT_SQUARE(board, s);
+		if (p == EMPTY || PLAYER (p) != piece_owner)
+			continue;
+		Move m = MOVE(s, square);
 
-			//if (PLAYER(p) == piece_owner &&
-			if (legal_move(board, m, FALSE))
-			{
-				ret = s;
-				goto cleanup;
-			}
-		}
+		if (pseudo_legal_move(board, m))
+			return s;
 	}
 
-cleanup:
-	board->turn = initial_turn;
-	return ret;
+	return NULL_SQUARE;
 }
 
-static Square
-find_attacking_piece(Board *board, Square square, Player attacker)
+static inline gboolean
+exist_two_piece_looking_at (Board *board, Square square, Player piece_owner)
 {
-	// The easiest way to do this without duplicating logic from legal_move
-	// is to put an enemy piece there and then check if moving there is legal.
-	// This will trigger the logic in legal_move for pawn captures.
-	Piece initial_piece = PIECE_AT_SQUARE(board, square);
-	PIECE_AT_SQUARE(board, square) =
-		PIECE(OTHER_PLAYER(attacker), PAWN);
+	uint8_t check_count = 0;
+	for(Square s = SQ_A1; s <= SQ_H8; s++)
+	{
+		Piece p = PIECE_AT_SQUARE(board, s);
+		if (p == EMPTY || PLAYER (p) != piece_owner)
+			continue;
+		Move m = MOVE(s, square);
 
-	Square s = find_piece_looking_at(board, square, attacker);
-
-	PIECE_AT_SQUARE(board, square) = initial_piece;
-
-	return s;
+		if (pseudo_legal_move(board, m))
+			check_count++;
+	}
+	return check_count >= 2;
 }
+
+// static Square
+// find_attacking_piece(Board *board, Square square, Player attacker)
+// {
+// 	// The easiest way to do this without duplicating logic from legal_move
+// 	// is to put an enemy piece there and then check if moving there is legal.
+// 	// This will trigger the logic in legal_move for pawn captures.	
+// 	Square s = find_piece_looking_at(board, square, attacker);
+
+// 	return s;
+// }
 
 gboolean
 under_attack(Board *board, Square square, Player attacker)
 {
-	return find_attacking_piece(board, square, attacker) != NULL_SQUARE;
+	return find_piece_looking_at (board, square, attacker) != NULL_SQUARE;
 }
 
 Square
 find_king(Board *board, Player p)
 {
-	Piece king = PIECE(p, KING);
+	// Piece king = PIECE(p, KING);
+	
+	// for(Square square = SQ_A1; square <= SQ_H8; square++)
+	// {
+	// 	if (PIECE_AT_SQUARE (board, square) == king)
+	// 		return square;
+	// }
+	// //print_board (board);
 
-	for (Rank rank = RANK_1; rank <= RANK_8; rank++)
-		for (File file = FILE_A; file <= FILE_H; file++)
-			if (PIECE_AT(board, file, rank) == king)
-				return SQUARE(file, rank);
-
-	//print_board (board);
-
-	return NULL_SQUARE;
+	return board->king[p];
 }
 
 gboolean
-in_check(Board *board, Player p)
+in_check (Board *board, Player p)
 {
-	Square king_location = find_king (board, p);
+	Square king_location = board->king[p];
 	//g_assert (king_location != NULL_SQUARE); // both players should have a king
 	return under_attack (board, king_location, OTHER_PLAYER(p));
+}
+
+gboolean
+in_double_check (Board *board, Player p)
+{
+	Square king_location = board->king[p];
+	
+	return exist_two_piece_looking_at (board, king_location, OTHER_PLAYER (p));
 }
 
 // This could be more simply written as "number of legal moves = 0", if the
@@ -725,7 +731,7 @@ checkmate(Board *board, Player p)
 	if (!in_check(board, p))
 		return FALSE;
 
-	Square king_location = find_king (board, p);
+	Square king_location = board->king[p];
 	Player other = OTHER_PLAYER (p);
 	File x = SQUARE_X (king_location);
 	Rank y = SQUARE_Y (king_location);
@@ -744,8 +750,13 @@ checkmate(Board *board, Player p)
 		}
 	}
 
+	// King cannot move, if is in double check, it is checkmake,
+	// is impossible block or capture 2 pieces in 1 move
+	if (in_double_check (board, p))
+		return TRUE;
+
 	// Can the attacking piece be captured?
-	Square attacker = find_attacking_piece (board, king_location, other);
+	Square attacker = find_piece_looking_at (board, king_location, other);
 	if (under_attack (board, attacker, p))
 		return FALSE;
 

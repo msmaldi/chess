@@ -15,6 +15,8 @@ chessboard_new (void)
 
     result->game = game_new_startpos ();
     result->drag_source = NULL_SQUARE;
+	result->promotion_square = NULL_SQUARE;
+	result->promotion_piece = EMPTY;
     result->flipped = FALSE;
 
     GtkWidget *frame_outside = gtk_aspect_frame_new (NULL, 0.5, 0.5, 1, FALSE);
@@ -140,7 +142,7 @@ get_square_size_n (GtkWidget *board)
 }
 
 static void 
-draw_piece_n(cairo_t *cr, Piece p, guint size)
+draw_piece_n(cairo_t *cr, Piece p, guint size, gboolean is_promoting)
 {
 	RsvgHandle *piece_image =
 		piece_svgs[PLAYER(p)][PIECE_TYPE(p) - 1];
@@ -155,8 +157,115 @@ draw_piece_n(cairo_t *cr, Piece p, guint size)
 	rsvg_handle_render_cairo(piece_image, cr);
 
 	cairo_scale(cr, 1 / scale, 1 / scale);
+	if (is_promoting)
+	{
+		cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
+		cairo_rectangle (cr, 0, 0, size, size);
+		cairo_fill(cr);
+	}
 }
 
+static void
+draw_promotion_piece_options (cairo_t *cr, guint size,ChessBoard *chessboard)
+{
+	int invert = chessboard->flipped ? -1 : 1;
+
+	if (chessboard->game->board->turn == WHITE)
+	{
+		cairo_set_source_rgba(cr, 255.0/255.0, 165.0/255.0, 0, 0.8);
+		if (!chessboard->flipped)
+		{
+			cairo_rectangle (cr, 0, 0, size, size * 4);
+		}
+		else
+		{
+			cairo_translate (cr, 0, -size * 3);
+			cairo_rectangle (cr, 0, 0, size, size * 4);
+			cairo_translate (cr, 0, size * 3);
+		}
+		cairo_fill(cr);
+
+		cairo_set_source_rgba(cr, 0, 0, 0, 1);
+
+		RsvgHandle *white_queen = piece_svgs[WHITE][QUEEN-1];
+		RsvgHandle *white_knight = piece_svgs[WHITE][KNIGHT-1];
+		RsvgHandle *white_rook = piece_svgs[WHITE][ROOK-1];
+		RsvgHandle *white_bishop = piece_svgs[WHITE][BISHOP-1];
+
+		double scale = 0.025 * size / DEFAULT_SQUARE_SIZE;
+
+		cairo_scale(cr, scale, scale);
+		rsvg_handle_render_cairo (white_queen, cr);
+		cairo_scale(cr, 1 / scale, 1 / scale);
+
+		cairo_translate (cr, 0, size * invert);
+
+		cairo_scale(cr, scale, scale);
+		rsvg_handle_render_cairo (white_knight, cr);
+		cairo_scale(cr, 1 / scale, 1 / scale);
+
+		cairo_translate (cr, 0, size * invert);
+
+		cairo_scale(cr, scale, scale);
+		rsvg_handle_render_cairo (white_rook, cr);
+		cairo_scale(cr, 1 / scale, 1 / scale);
+
+		cairo_translate (cr, 0, size * invert);
+
+		cairo_scale(cr, scale, scale);
+		rsvg_handle_render_cairo (white_bishop, cr);
+		cairo_scale(cr, 1 / scale, 1 / scale);
+		
+		cairo_translate (cr, 0, -size * 3 * invert);
+	}
+	else
+	{
+		cairo_set_source_rgba(cr, 255.0/255.0, 165.0/255.0, 0, 0.8);
+		if (!chessboard->flipped)
+		{
+			cairo_rectangle (cr, 0, -size * 3, size, size * 4);
+		}
+		else
+		{
+			cairo_translate (cr, 0, size * 3);
+			cairo_rectangle (cr, 0, -size * 3, size, size * 4);
+			cairo_translate (cr, 0, -size * 3);
+		}
+
+		cairo_fill(cr);
+
+		RsvgHandle *black_queen = piece_svgs[BLACK][QUEEN-1];
+		RsvgHandle *black_knight = piece_svgs[BLACK][KNIGHT-1];
+		RsvgHandle *black_rook = piece_svgs[BLACK][ROOK-1];
+		RsvgHandle *black_bishop = piece_svgs[BLACK][BISHOP-1];
+
+		double scale = 0.025 * size / DEFAULT_SQUARE_SIZE;
+
+		cairo_scale(cr, scale, scale);
+		rsvg_handle_render_cairo (black_queen, cr);
+		cairo_scale(cr, 1 / scale, 1 / scale);
+
+		cairo_translate (cr, 0, -size * invert);
+
+		cairo_scale(cr, scale, scale);
+		rsvg_handle_render_cairo (black_knight, cr);
+		cairo_scale(cr, 1 / scale, 1 / scale);
+
+		cairo_translate (cr, 0, -size * invert);
+
+		cairo_scale(cr, scale, scale);
+		rsvg_handle_render_cairo (black_rook, cr);
+		cairo_scale(cr, 1 / scale, 1 / scale);
+
+		cairo_translate (cr, 0, -size * invert);
+
+		cairo_scale(cr, scale, scale);
+		rsvg_handle_render_cairo (black_bishop, cr);
+		cairo_scale(cr, 1 / scale, 1 / scale);
+		
+		cairo_translate (cr, 0, size * 3 * invert);
+	}
+}
 
 // This should be divisible by 2 so as not to leave a one pixel gap
 #define HIGHLIGHT_LINE_WIDTH 4
@@ -177,6 +286,8 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 	guint padding = leftover_space / 2;
 	cairo_translate(cr, padding, padding);
 
+	double transparency = chessboard->promotion_square == NULL_SQUARE ? 1 : 0.3;
+
 	// Color light squares one-by-one
 	cairo_set_line_width(cr, 0);
 	for (guint file = 0; file < BOARD_SIZE; file++) {
@@ -186,12 +297,14 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 			int y = chessboard->flipped ? BOARD_SIZE - rank - 1 : rank;
 			if ((y + x) % 2 == 0) {
 				// dark squares
-				cairo_set_source_rgb(cr, 0.450980, 0.537255, 0.713725);
+				cairo_set_source_rgba(cr, 0.450980, 0.537255, 0.713725, transparency);
 				cairo_rectangle(cr, 0, 0, square_size, square_size);
 				cairo_fill(cr);
-			} else {
+			} 
+			else 
+			{
 				// light squares
-				cairo_set_source_rgb(cr, 0.952941, 0.952941, 0.952941);
+				cairo_set_source_rgba(cr, 0.952941, 0.952941, 0.952941, transparency);
 				cairo_rectangle(cr, 0, 0, square_size, square_size);
 				cairo_fill(cr);
 			}
@@ -200,8 +313,9 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 			Move last_move = chessboard->game->move;
 			Square s = SQUARE(x, y);
 			if ( last_move != NULL_MOVE &&
-					(s == START_SQUARE (last_move) || s == END_SQUARE (last_move))) {
-				cairo_set_source_rgb(cr, 0.225, 0.26, 0.3505);
+					(s == START_SQUARE (last_move) || s == END_SQUARE (last_move))) 
+			{
+				cairo_set_source_rgba(cr, 0.225, 0.26, 0.3505, transparency);
 				cairo_set_line_width(cr, HIGHLIGHT_LINE_WIDTH);
 				cairo_translate(cr, HIGHLIGHT_LINE_WIDTH / 2, HIGHLIGHT_LINE_WIDTH / 2);
 				cairo_rectangle(cr, 0, 0, square_size - HIGHLIGHT_LINE_WIDTH,
@@ -216,8 +330,10 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 			Piece p;
 			if ((p = PIECE_AT(chessboard->game->board, x, y)) != EMPTY &&
 					(chessboard->drag_source == NULL_SQUARE || SQUARE(x, y) != chessboard->drag_source)) {
-				draw_piece_n(cr, p, square_size);
+				draw_piece_n(cr, p, square_size, chessboard->promotion_square != NULL_SQUARE);
 			}
+
+
 
 			cairo_translate(cr, 0, square_size);
 		}
@@ -225,15 +341,44 @@ chessboard_draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 		cairo_translate(cr, square_size, -square_size * BOARD_SIZE);
 	}
 
-	if (chessboard->drag_source != NULL_SQUARE) 
+	cairo_translate(cr, -square_size * (BOARD_SIZE), 0);
+
+	for (guint file = 0; file < BOARD_SIZE; file++) {
+		guint x = chessboard->flipped ? BOARD_SIZE - file - 1 : file;
+		for (int rank = BOARD_SIZE - 1; rank >= 0; rank--) {	
+			int y = chessboard->flipped ? BOARD_SIZE - rank - 1 : rank;
+
+			Square s = SQUARE(x, y);
+
+			// TODO: create another loop for draw this
+			if (chessboard->promotion_square == s)
+			{
+				draw_promotion_piece_options (cr, square_size, chessboard);
+			}
+
+			cairo_translate(cr, 0, square_size);
+		}
+		cairo_translate(cr, square_size, -square_size * BOARD_SIZE);
+	}	
+
+	if (chessboard->drag_source != NULL_SQUARE && chessboard->promotion_square == NULL_SQUARE) 
     {
 		cairo_identity_matrix(cr);
 		cairo_translate(cr, padding + chessboard->mouse_x - square_size / 2,
 				padding + chessboard->mouse_y - square_size / 2);
-		draw_piece_n(cr, PIECE_AT_SQUARE(chessboard->game->board, chessboard->drag_source), square_size);
+		draw_piece_n(cr, PIECE_AT_SQUARE(chessboard->game->board, chessboard->drag_source), square_size, FALSE);
 	}
 
 	return FALSE;
+}
+
+
+void           
+chessboard_cancel_casting (ChessBoard *chessboard)
+{
+	chessboard->drag_source = NULL_SQUARE;
+	chessboard->promotion_square = NULL_SQUARE;
+	chessboard->promotion_piece = EMPTY;
 }
 
 
@@ -294,7 +439,37 @@ chessboard_mouse_down_callback (GtkWidget *widget,
 
 	Square clicked_square = 
 		chessboard_coords_to_square(widget, e->x, e->y, chessboard->flipped);
-	if (PIECE_AT_SQUARE(chessboard->game->board, clicked_square) != EMPTY) {
+	if (chessboard->promotion_square != NULL_SQUARE)
+	{
+		int direction = chessboard->game->board->turn == WHITE ? -1 : 1;
+		Square queen_square = chessboard->promotion_square;
+		Square knight_square = SQUARE (SQUARE_FILE (queen_square), (SQUARE_RANK (queen_square) + direction));
+		Square rook_square = SQUARE (SQUARE_FILE (queen_square), (SQUARE_RANK (knight_square) + direction));
+		Square bishop_square = SQUARE (SQUARE_FILE (queen_square), (SQUARE_RANK (rook_square) + direction));
+		if (clicked_square == queen_square)
+		{
+			chessboard->promotion_piece = QUEEN;
+		}
+		else if (clicked_square == knight_square)
+		{
+			chessboard->promotion_piece = KNIGHT;
+		}
+		else if (clicked_square == rook_square)
+		{
+			chessboard->promotion_piece = ROOK;
+		}
+		else if (clicked_square == bishop_square)
+		{
+			chessboard->promotion_piece = BISHOP;
+		}
+		else
+		{
+			chessboard->promotion_square = NULL_SQUARE;
+			chessboard->promotion_piece = EMPTY;
+		}
+	}
+	else if (PIECE_AT_SQUARE(chessboard->game->board, clicked_square) != EMPTY) 
+	{
 		chessboard->drag_source = clicked_square;
 	}
 
@@ -307,28 +482,50 @@ chessboard_mouse_up_callback (GtkWidget *widget,
 							  GdkEvent  *event,
 							  gpointer   data)
 {
-	ChessBoard *chessboard = (ChessBoard*)data;	
-	GdkEventButton *e = (GdkEventButton *)event;
+	ChessBoard *chessboard = (ChessBoard*)data;
+	gtk_widget_queue_draw(chessboard->board_area);
 
-	if (e->button != 1 || chessboard->drag_source == NULL_SQUARE)
-		return FALSE;
+	GdkEventButton *e = (GdkEventButton *)event;
 
 	Square drag_target = 
 		chessboard_coords_to_square(widget, e->x, e->y, chessboard->flipped);
+	Square end = NULL_SQUARE;
 
 	Piece piece = PIECE_AT_SQUARE (chessboard->game->board, chessboard->drag_source);
 
+	if (e->button != 1 || 
+		(chessboard->drag_source == NULL_SQUARE && chessboard->promotion_square == NULL_SQUARE))
+		return FALSE;
+
+	Move m;
+	m = MOVE(chessboard->drag_source, drag_target);
+	chess_print_move (m);
+
+	Square drag_source = chessboard->drag_source;
 	// open widget to request a piece to promote
-	if (piece == BLACK_PAWN && SQUARE_RANK (drag_target) == RANK_1)
+	if (chessboard->game->board->turn == BLACK &&
+		piece == BLACK_PAWN && SQUARE_RANK (drag_target) == RANK_1 && SQUARE_RANK (drag_source) == RANK_2)
 	{
-		g_print ("Promoting Black Pawn\n");
+		chessboard->promotion_square = drag_target;
 	}
-	else if (piece == WHITE_PAWN && SQUARE_RANK (drag_target) == RANK_8)
+	else if (chessboard->game->board->turn == WHITE &&
+		piece == WHITE_PAWN && SQUARE_RANK (drag_target) == RANK_8 && SQUARE_RANK (drag_source) == RANK_7)
 	{
-		g_print ("Promoting White Pawn\n");
+		chessboard->promotion_square = drag_target;
 	}
-	
-	Move m = MOVE(chessboard->drag_source, drag_target);
+
+	if (chessboard->promotion_square != NULL_SQUARE)
+	{
+		if (chessboard->promotion_piece == EMPTY)
+		{
+
+			return FALSE;
+		}
+		m = MOVE(chessboard->drag_source, chessboard->promotion_square);
+		m = PROMOTE (m, chessboard->promotion_piece);
+		chessboard->promotion_square = NULL_SQUARE;
+		chessboard->promotion_piece = EMPTY;
+	}
 
 	if (legal_move(chessboard->game->board, m, TRUE)) 
 	{
@@ -337,9 +534,9 @@ chessboard_mouse_up_callback (GtkWidget *widget,
 
 		// TODO: Stop printing this when we have a proper move list GUI
 		if (chessboard->game->board->turn == WHITE)
-			printf("%d. %s", chessboard->game->board->move_number, notation);
+			g_print("%d. %s", chessboard->game->board->move_number, notation);
 		else
-			printf(" %s\n", notation);
+			g_print(" %s\n", notation);
 
 		chessboard->game = add_child(chessboard->game, m);
 

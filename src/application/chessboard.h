@@ -25,6 +25,9 @@ typedef struct _ChessBoard
     Square drag_source;
     gint mouse_x;
     gint mouse_y;
+
+    Square promotion_square;
+    PieceType promotion_piece;
 } ChessBoard;
 
 
@@ -42,6 +45,8 @@ void           chessboard_set_game       (ChessBoard *chessboard, Game *game);
 
 void           chessboard_flip           (ChessBoard *chessboard);
 void           free_chessboard           (ChessBoard *chessboard);
+
+void           chessboard_cancel_casting (ChessBoard *chessboard);
 
 
 

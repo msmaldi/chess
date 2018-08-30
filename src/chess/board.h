@@ -3,6 +3,7 @@
 
 #include "chessconfig.h"
 #include <stdint.h>
+#include <stdbool.h>
 #include <glib.h>
 
 #define BOARD_SIZE 8
@@ -23,7 +24,12 @@ typedef int_fast8_t Rank;
 #define RANK_WHITE_PAWN RANK_2
 #define RANK_BLACK_PAWN RANK_7
 #define RANK_WHITE_PROMOTION RANK_8
-#define RANK_BLACK_PROMOTION RANK_0
+#define RANK_BLACK_PROMOTION RANK_1
+#define RANK_BLACK_CASTLE RANK_8
+#define RANK_WHITE_CASTLE RANK_1
+
+#define FILE_CASTLE_KINGSIDE FILE_G
+#define FILE_CASTLE_QUEENSIDE FILE_C
 
 #define FILE_A 0
 #define FILE_B 1
@@ -42,25 +48,40 @@ typedef int_fast8_t Rank;
 // 16-----------------8------------------0
 // |       File       |       Rank       |
 //
-typedef uint_fast16_t Square;
-#define SQUARE(file, rank)  ((Square)(((file) << 8) | (rank)))
-#define SQUARE_X(square)    ((File)((square) >> 8))
-#define SQUARE_Y(square)    ((Rank)((square) & 0xFF))
-#define SQUARE_FILE(square) ((File)((square) >> 8))
-#define SQUARE_RANK(square) ((Rank)((square) & 0xFF))
+typedef int_fast8_t Square;
+#define SQUARE(file, rank)  ((Square)(((rank) << 3) | (file)))
+#define SQUARE_X(square)    ((File)((square) & 0x7))
+#define SQUARE_Y(square)    ((Rank)((square) >> 3))
+#define SQUARE_FILE(square) ((File)((square) & 0x7))
+#define SQUARE_RANK(square) ((Rank)((square) >> 3))
 
 #define NULL_SQUARE ((Square)(~((Square)0)))
 
+enum Squares {
+  SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
+  SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
+  SQ_A3, SQ_B3, SQ_C3, SQ_D3, SQ_E3, SQ_F3, SQ_G3, SQ_H3,
+  SQ_A4, SQ_B4, SQ_C4, SQ_D4, SQ_E4, SQ_F4, SQ_G4, SQ_H4,
+  SQ_A5, SQ_B5, SQ_C5, SQ_D5, SQ_E5, SQ_F5, SQ_G5, SQ_H5,
+  SQ_A6, SQ_B6, SQ_C6, SQ_D6, SQ_E6, SQ_F6, SQ_G6, SQ_H6,
+  SQ_A7, SQ_B7, SQ_C7, SQ_D7, SQ_E7, SQ_F7, SQ_G7, SQ_H7,
+  SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
+  SQ_NONE,
+
+  SQUARE_NB = 64
+};
 
 // Pieces are represented as 8 bits, with the MSB used to store the color, and
 // the rest equal to one of a bunch of constants for the type of piece.
 typedef uint_fast8_t Piece;
 
-typedef enum Player
+enum Players
 {
 	BLACK = 0,
 	WHITE = 1,
-} Player;
+};
+
+typedef uint8_t Player;
 
 #define OTHER_PLAYER(p) ((p) == WHITE ? BLACK : WHITE)
 
@@ -101,8 +122,8 @@ typedef enum _PieceType
 
 typedef struct Castling
 {
-	gboolean kingside;
-	gboolean queenside;
+	bool kingside;
+	bool queenside;
 } Castling;
 
 
@@ -129,14 +150,14 @@ typedef struct Board
 	Player turn;
 	Castling castling[PLAYERS];
 	Square en_passant;
-	guint half_move_clock;
-	guint move_number;
-
+	uint8_t half_move_clock;
+	uint16_t move_number;
 	Piece pieces[BOARD_SIZE * BOARD_SIZE];
+	Square king[PLAYERS];
 } Board;
 
-#define PIECE_AT(board, file, rank) ((board)->pieces[((rank) * BOARD_SIZE) + (file)])
-#define PIECE_AT_SQUARE(board, square) PIECE_AT(board, SQUARE_X (square), SQUARE_Y (square))
+#define PIECE_AT(board, file, rank) ((board)->pieces[(SQUARE (file, rank))])
+#define PIECE_AT_SQUARE(board, square) ((board)->pieces[(square)])
 
 Board	   *board_new				(void);
 void		board_free				(Board *board);
@@ -151,6 +172,7 @@ gint 		to_fen 					(Board *board, gchar *fen);
 void 		print_board				(Board *board);
 gboolean 	in_check				(Board *board, Player p);
 gboolean 	checkmate				(Board *board, Player p);
+gboolean    stalemate               (Board *board, Player p);
 gboolean 	can_castle_kingside		(Board *board, Player p);
 gboolean 	can_castle_queenside	(Board *board, Player p);
 
