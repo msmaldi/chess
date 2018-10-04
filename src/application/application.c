@@ -12,7 +12,7 @@ GtkWidget *notebook;
 GtkWidget *box;
 GtkWidget *mainbox;
 GtkWidget *rightbox;
-uci_engine *engine;
+UciEngine *engine;
 
 gpointer
 on_getmove (gpointer data)
@@ -62,9 +62,14 @@ initialize_widgets (void)
     notebook = notebook_new ();
     
 	mainbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+
+
     rightbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+
+    g_object_set (G_OBJECT (rightbox), "expand", TRUE, NULL);
   
     initialize_fen_box_widget ();
+    initialize_engine_box_widget ();
 }
 
 GtkWidget* gtk_label_new_aligned (const gchar *str)
@@ -82,6 +87,9 @@ pack_widgets_and_show (void)
     gtk_container_add (GTK_CONTAINER (mainbox), GTK_WIDGET (chessboard->board));
 
     gtk_container_add (GTK_CONTAINER (rightbox), GTK_WIDGET (fen_box));
+    gtk_container_add (GTK_CONTAINER (rightbox), GTK_WIDGET (engine_box));
+
+
     gtk_container_add (GTK_CONTAINER (mainbox), GTK_WIDGET (rightbox));
 
     gtk_container_add (GTK_CONTAINER (window), GTK_WIDGET (box));

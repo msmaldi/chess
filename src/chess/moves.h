@@ -13,7 +13,7 @@
 // PROMOTE to change piece.
 typedef int_fast32_t Move;
 
-#define MOVE(start, end)     ((Move)((QUEEN << 16) | (start << 8) | (end)))
+#define MOVE(start, end)     ((Move)((start << 8) | (end)))
 #define PROMOTE(move, piece) ((Move)((piece << 16) | (move & 0xFFFF)))
 #define START_SQUARE(move)   ((Square)(((move) & 0xFFFF) >> 8))
 #define END_SQUARE(move)     ((Square)((move) & 0xFF))

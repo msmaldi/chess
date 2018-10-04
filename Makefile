@@ -11,7 +11,7 @@ CFLAGS_LIBRSVG=`pkg-config --cflags librsvg-2.0`
 run: chess
 	./chess
 
-chess: main.o application.o notebook.o page_home.o page_engine.o fen_box.o uci_engine.o chessboard.o libchess.a
+chess: main.o application.o notebook.o page_home.o page_engine.o fen_box.o uci_engine.o chessboard.o engine_box.o libchess.a
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
 main.o: src/main.c
@@ -36,6 +36,9 @@ chessboard.o: src/application/chessboard.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CGLAGS_GTK) $(CFLAGS_LIBRSVG)
 
 fen_box.o: src/application/fen_box.c
+	$(CC) $(CFLAGS) -c $^ -o $@ $(CGLAGS_GTK)
+
+engine_box.o: src/application/engine_box.c
 	$(CC) $(CFLAGS) -c $^ -o $@ $(CGLAGS_GTK)
 
 # Lib Chess

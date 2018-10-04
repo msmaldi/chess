@@ -6,7 +6,7 @@
 
 gboolean        cb_execute          (GtkWidget *widget, gpointer *user_data);
 
-typedef struct _uci_engine
+typedef struct
 {
     gchar      *engine_full_path;
     GPid        pid;
@@ -25,38 +25,15 @@ typedef struct _uci_engine
     Move        ponder;
     gpointer   (*on_getmove_callback) (gpointer data);
     GMutex      mutex;
-} uci_engine;
+} UciEngine;
 
-uci_engine*     uci_engine_new      (gchar *engine);
+UciEngine*      uci_engine_new         (gchar *engine);
 
-void            init_engine            (uci_engine *engine, GError **error);
-void            uci_engine_init_fen    (uci_engine *engine, gchar *fen);
-void            uci_engine_requestmove (uci_engine *engine);
+void            init_engine            (UciEngine *engine, GError **error);
+void            uci_engine_setup_fen   (UciEngine *engine, gchar *fen);
+void            uci_engine_requestmove (UciEngine *engine);
 
-void            uci_engine_free        (uci_engine *engine);
-
-typedef enum _uci_option_type
-{
-    SPIN,
-    CHECK,
-    COMBO
-} uci_option_type;
-
-
-
-typedef struct _uci_option
-{
-    GString *name;
-    uci_option_type type;
-    gpointer dfault;
-
-} uci_option;
-
-typedef struct _uci_options
-{
-
-} uci_options;
-
+void            uci_engine_free        (UciEngine *engine);
 
 
 #endif

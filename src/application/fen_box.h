@@ -7,7 +7,7 @@
 
 extern  GtkWidget    *fen_box;
 extern  GtkWidget    *fen_input;
-extern  gchar         fen[100];
+extern  gchar         fen[90];
 
 void    initialize_fen_box_widget   (void);
 void    update_fen_input            (void);

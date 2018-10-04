@@ -5,19 +5,19 @@
 #include "../notebook/page_home.h"
 
 gboolean
-cb_execute( GtkWidget *widget,
-            gpointer  *user_data )
+cb_execute(GtkWidget *widget,
+           gpointer  *user_data )
 {
-    uci_engine_init_fen (engine, fen);
+    uci_engine_setup_fen (engine, fen);
 
     uci_engine_requestmove (engine);
     set_button_sensitivity ();
 }
 
-uci_engine*
+UciEngine*
 uci_engine_new (gchar *engine)
 {
-    uci_engine* result = g_new0 (uci_engine, 1);
+    UciEngine* result = g_new0 (UciEngine, 1);
     result->engine_full_path = g_strdup (engine);
     result->is_initialized = FALSE;
     result->thinking = FALSE;
@@ -41,7 +41,7 @@ out_watch (GIOChannel   *channel,
 {
     gchar *buffer;
     gsize  size;
-    uci_engine *engine = (uci_engine*)data;
+    UciEngine *engine = (UciEngine*)data;
 
     if (cond == G_IO_HUP)
     {
@@ -94,7 +94,6 @@ out_watch (GIOChannel   *channel,
             g_print ("%s", buffer);
             g_free (buffer);
 
-            //Move m = MOVE (SQUARE (start_file, start_rank), SQUARE (end_file, end_rank));
             chess_print_move (m);
             engine->bestmove = m;
             engine->thinking = FALSE;
@@ -112,7 +111,7 @@ out_watch (GIOChannel   *channel,
 }
 
 void
-init_engine(uci_engine *engine, GError **error)
+init_engine(UciEngine *engine, GError **error)
 {
     // TODO assert not null engine;
 
@@ -149,30 +148,31 @@ init_engine(uci_engine *engine, GError **error)
 }
 
 void
-uci_engine_init_fen (uci_engine *engine, gchar *fen)
+uci_engine_setup_fen (UciEngine *engine, gchar *fen)
 {
-    gchar *uci_command = g_strdup_printf ("position fen %s\n", fen);
+    gchar uci_command[120];
+    gint uci_command_len = g_snprintf (uci_command, 120, "position fen %s\n", fen);
 
     GError *error = NULL;
     gsize bytes_written;
 
-    g_io_channel_write_chars (engine->in_ch, uci_command, g_utf8_strlen (uci_command, 100), &bytes_written, &error);
+    g_io_channel_write_chars (engine->in_ch, uci_command, uci_command_len, &bytes_written, &error);
     if (error != NULL)
         g_print("%s\n", error->message);
-
-    //g_io_channel_write_chars (engine->in_ch, "go\n", 3, &bytes_written, &error);
 
     g_io_channel_flush (engine->in_ch, &error);
 }
 
 void
-uci_engine_requestmove (uci_engine *engine)
-{    
+uci_engine_requestmove (UciEngine *engine)
+{   
+    gchar uci_command[120];
+    gint uci_command_len = g_snprintf (uci_command, 120, "go depth 20\n");
+
     GError *error = NULL;
     gsize bytes_written;
-    gchar *uci_command = g_strdup_printf ("go depth 20\n");
     
-    g_io_channel_write_chars (engine->in_ch, uci_command, g_utf8_strlen (uci_command, 100), &bytes_written, &error);
+    g_io_channel_write_chars (engine->in_ch, uci_command, uci_command_len, &bytes_written, &error);
     if (error != NULL)
         g_print("%s\n", error->message);
     g_io_channel_flush (engine->in_ch, &error);
@@ -181,15 +181,7 @@ uci_engine_requestmove (uci_engine *engine)
 }
 
 void
-uci_engine_get_uci_options_new (uci_engine *engine)
-{
-    while (engine->lock)
-        g_usleep (100);
-    engine->lock = TRUE;
-}
-
-void
-uci_engine_free  (uci_engine *engine)
+uci_engine_free (UciEngine *engine)
 {
     if (engine->is_initialized)
         g_spawn_close_pid(engine->pid);
